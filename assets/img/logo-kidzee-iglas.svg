@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KIDZEE IGLAS — logo lockup (PLACEHOLDER)
+  ----------------------------------------------------------------------------
+  This is a TEXT-BASED placeholder built so the layout, spacing and the
+  "IGLAS" locality line under the wordmark are all correct.
+
+  >>> BEFORE GOING LIVE: replace this file with the official Kidzee logo
+  >>> supplied by Zee Learn Ltd. (ask your Franchise Business Manager for the
+  >>> Kidzee Brand Kit / logo in AI, EPS, SVG or transparent PNG format).
+  >>> Keep the same file name and everything will keep working.
+
+  The locality line ("IGLAS") uses the same font family as the wordmark, as
+  required, set in small caps with wide letter-spacing.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 132" width="340" height="132"
+     role="img" aria-label="Kidzee Iglas">
+  <title>Kidzee Iglas</title>
+
+  <defs>
+    <style>
+      .wm {
+        font-family: "Baloo 2", "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+        font-size: 74px;
+        font-weight: 800;
+        letter-spacing: -1px;
+      }
+      .loc {
+        font-family: "Baloo 2", "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+        font-size: 27px;
+        font-weight: 700;
+        letter-spacing: 13.5px;
+        fill: #6d2a8c;
+      }
+    </style>
+  </defs>
+
+  <!-- Wordmark: each letter in a different brand colour -->
+  <text class="wm" x="8" y="72">
+    <tspan fill="#ec008c">K</tspan><tspan fill="#f7941d">i</tspan><tspan fill="#00a99d">d</tspan><tspan fill="#6d2a8c">z</tspan><tspan fill="#29abe2">e</tspan><tspan fill="#8dc63f">e</tspan>
+  </text>
+
+  <!-- Divider rule -->
+  <rect x="10" y="86" width="252" height="3" rx="1.5" fill="#ffc72c"/>
+
+  <!-- Locality line, same font family as the wordmark -->
+  <text class="loc" x="12" y="119">IGLAS</text>
+</svg>
