@@ -1,162 +1,122 @@
 # Kidzee Iglas — Website
 
-Iglas, Aligarh ke Kidzee preschool ki official website.
+Iglas, Aligarh ke Kidzee play school ki official website.
 Director: **Himanshu Kumar Sharma** · 📞 **91933 33793**
 
-> **Poori website ek hi file mein hai — `index.html`.**
-> HTML, CSS aur JavaScript sab uske andar hai. Koi folder, koi setup, koi
-> build step nahi. Bas file kholo aur chal jaayegi.
+> **Poori website ek hi file mein hai — `index.html`** (~64 KB).
+> HTML, CSS aur JavaScript sab uske andar. Koi folder, koi setup, koi build step nahi.
+> Double-click karo, browser mein khul jaayegi.
 
 ---
 
-## Isme kya hai
+## Structure
 
 ```
-kidzee-iglas/
-├── index.html                  ← 🌟 POORI WEBSITE (HTML + CSS + JS, 110 KB)
-├── robots.txt                  ← Google ke liye
-├── sitemap.xml                 ← Google ke liye
-├── assets/
-│   └── img/
-│       ├── logo-kidzee-iglas.svg   ← placeholder logo (print/social ke liye)
-│       └── README.md           ← 📸 photos ki poori guide (padho!)
+kidzee_iglas/
+├── index.html                  🌟 POORI WEBSITE
+├── robots.txt · sitemap.xml · .gitignore
+├── assets/img/
+│   ├── logo-kidzee-iglas.svg
+│   └── README.md               📸 photo shot-list + parent permission guide
 └── branding/
-    ├── 01-zee-learn-approval-email.md   ← ⚠️ SABSE PEHLE YE PADHO
-    ├── 02-brand-guidelines.md           ← colours, fonts, tone of voice
-    ├── 03-google-business-profile.md    ← Google Maps par aane ka tarika
-    ├── 04-social-media-30-day-plan.md   ← 30 din ka ready content
-    └── 05-launch-checklist.md           ← live karne se pehle ka checklist
+    ├── 01-zee-learn-approval-email.md   ⚠️ pehle ye padho
+    ├── 02-brand-guidelines.md
+    ├── 03-google-business-profile.md
+    ├── 04-social-media-30-day-plan.md   30 din ke ready captions
+    └── 05-launch-checklist.md
 ```
 
-## Kya-kya feature hai
+## Features
 
 | Feature | Detail |
 |---|---|
-| 📄 **Ek hi file** | `index.html` — copy karo, kahin bhi rakho, chal jaayegi |
-| 📱 Mobile-first | Iglas mein 90% parents mobile par aayenge |
-| 🌐 Hindi + English | Header mein **EN / हिं** toggle. Choice yaad rehti hai |
-| 💬 WhatsApp lead form | Form bharo → seedha aapke WhatsApp par poori detail. **Koi server nahi chahiye** |
-| 📞 Sticky bottom bar | Mobile par "Call Now" + "Enquire" hamesha screen par |
-| ⚡ Bahut fast | Koi framework nahi, koi database nahi. 2G par bhi khulti hai |
-| 🔍 SEO ready | LocalBusiness + FAQ schema, meta tags, sitemap |
-| ♿ Accessible | Keyboard se chalti hai, screen reader friendly |
-| 💰 Free hosting possible | Netlify / GitHub Pages par ₹0 |
+| 📄 Ek hi file | `index.html` — kahin bhi rakho, chal jaayegi |
+| ⚡ Halki aur tez | ~64 KB, koi framework nahi, koi bahar ki image nahi. 2G par bhi khulti hai |
+| 📱 Mobile-first | Bottom par Call / WhatsApp / Enquiry bar hamesha screen par |
+| 💬 3 lead forms | Hero · Enroll section · Exit popup — sab **seedha WhatsApp** par (koi server nahi chahiye) |
+| 📞 CTA har jagah | Topbar, hero, har program card, 2 CTA bands, side rail, mobile bar, popup |
+| ⏳ Real countdown | `CONFIG.offerEnds` ki date par khud chhup jaata hai — jhoothi urgency nahi |
+| 🔔 Toast notifications | Sirf sacchi jaankari (admissions open, free visit) — fake "X ne admission liya" nahi |
+| 🎈 Creative design | Purple + yellow (aapke logo se), mascot, marquee, counters, scroll animations |
+| 🔍 SEO ready | LocalBusiness schema, meta tags, sitemap |
 
-**13 sections:** Hero · Trust bar · About · Why Us · Programs · Péntemind ·
-Daily Routine · Gallery · Testimonials · Admissions · Enquiry Form · FAQ ·
-Contact + Map
-
----
-
-## Website live kaise karein
-
-### Sabse aasaan tarika — Netlify Drop (5 minute, free)
-
-1. `kidzee-iglas` folder ka **ZIP** bana lo
-2. [app.netlify.com/drop](https://app.netlify.com/drop) kholo
-3. ZIP ko **drag and drop** kar do
-4. Bas! Turant ek link mil jaayega jaise `random-name-123.netlify.app`
-5. Apna domain jodne ke liye: Site settings → Domain management → Add custom
-   domain → `kidzeeiglas.com` daalo → jo DNS records batayein wo apne domain
-   provider (GoDaddy/Hostinger) mein daal do
-
-**HTTPS (🔒) Netlify khud free mein laga deta hai.**
-
-### GitHub Pages (free, is repo se seedha)
-Settings → Pages → Source: `main` branch → Save.
-Kuch minute mein `https://niitudit-ai.github.io/kidzee_iglas/` par live ho jaayegi.
-
-### Normal hosting (Hostinger, GoDaddy etc.)
-cPanel → **File Manager** → `public_html` kholo → `index.html`, `robots.txt`,
-`sitemap.xml` aur `assets` folder upload kar do. Ho gaya.
-
-> **Note:** `branding/` folder website ka hissa nahi hai — wo sirf aapke padhne ke
-> liye hai. Chaho to upload karte waqt hata sakte ho.
+**Sections:** Hero + form · Marquee · Stats · About · Programs (Playgroup/Nursery/LKG/UKG) ·
+Why Us · Péntemind · Daily Routine · CTA band · Gallery · Reviews · Admission process ·
+Enroll form · FAQ · Contact + Map · Footer
 
 ---
 
-## Website khud kaise edit karein
+## Live kaise karein
 
-Sab kuch `index.html` mein hai. Kisi bhi text editor mein khol lo
-(Notepad bhi chalega, lekin **Notepad++** ya **VS Code** behtar hai).
+### GitHub Pages (free, 2 minute)
+Repo → **Settings** → **Pages** → Branch `main`, folder `/ (root)` → **Save**
+→ `https://niitudit-ai.github.io/kidzee_iglas/`
 
-### Phone number badalna
-`index.html` mein Ctrl+H (Replace All) se ye 3 cheezein badlo:
-- `+919193333793` → naya number
-- `919193333793` → naya number
-- `91933 33793` → naya number (display ke liye)
+### Netlify Drop (free)
+Folder ka ZIP banao → [app.netlify.com/drop](https://app.netlify.com/drop) par drag-drop.
+HTTPS free milta hai. Baad mein `kidzeeiglas.com` domain jod sakte ho.
 
-Ek jagah JavaScript mein bhi hai (file ke aakhir mein):
+### Normal hosting
+cPanel → File Manager → `public_html` → `index.html`, `robots.txt`, `sitemap.xml`, `assets/` upload.
+
+---
+
+## Khud edit kaise karein
+
+Sab kuch `index.html` mein hai — Notepad se bhi khul jaayega.
+
+### 1. Phone number / offer date badalna
+File ke aakhir mein `<script>` ke andar sabse upar:
 ```js
-var WHATSAPP_NUMBER = "919193333793";   // yahan bhi badal do
+var CONFIG = {
+  wa: "919193333793",              // WhatsApp (91 + 10 digit)
+  school: "Kidzee Iglas",
+  offerEnds: "2026-09-30T23:59:59" // ⚠️ ASLI date daalein
+};
 ```
+Phir Ctrl+H se `+919193333793` aur `91933 33793` bhi replace kar dein.
 
-### Koi bhi text badalna (Hindi + English dono)
+### 2. Apna asli logo lagana
+Apni logo file ka naam **`logo.png`** rakh kar `assets/img/` mein daal do.
+Website usse khud utha legi aur andar wala SVG logo chhup jaayega. Bas itna.
 
-Website mein har text **do bhaasha** mein hai. Aisa dikhega:
-
+### 3. Photos lagana
+Photo `assets/img/` mein daalo, phir gallery mein ye line:
 ```html
-<h3 data-hi="प्ले ग्रुप">Playgroup</h3>
+<div class="ph"><i>🏫</i>Classroom<br>assets/img/g1.jpg</div>
 ```
-
-- `data-hi="..."` ke andar = **Hindi** text
-- Tag ke beech ka = **English** text
-
-Dono badalna zaroori hai, warna ek bhaasha purani reh jaayegi.
-
-### Colours badalna
-`index.html` mein `<style>` ke baad `:root {` dhoondho. Bas wahan ke HEX codes
-badal do — poori website ke colours change ho jaayenge.
-
-### Photos daalna
-👉 Poori guide: **`assets/img/README.md`** — isme 21-shot list bhi hai.
-
-Chhota version: photo ko `assets/img/` mein daalo, phir `index.html` mein
-dashed placeholder wali line:
+isse badal do:
 ```html
-<div class="photo photo--empty"><div><span class="ph-ico">🏫</span><span ...>Classroom photo<br>g1.jpg</span></div></div>
+<div class="ph"><img src="assets/img/g1.jpg" alt="Classroom" loading="lazy"></div>
 ```
-ko isse badal do:
-```html
-<div class="photo"><img src="assets/img/g1.jpg" alt="Classroom at Kidzee Iglas" loading="lazy"></div>
-```
+👉 Poori guide + 21-shot list: `assets/img/README.md`
 
-### Naya FAQ jodna
-`id="faq"` dhoondho. Ek `<div class="faq__item">` block copy karke neeche paste
-kar do, aur sawaal-jawab badal do.
+### 4. Colours badalna
+`<style>` ke shuru mein `:root {` block hai — bas HEX codes badal do.
+`--pur` = purple, `--yel` = yellow.
 
-### Programs ke age badalna
-`id="programs"` dhoondho. Har card mein `<span class="prog__age">` hai — wahan
-badlo (English aur `data-hi` dono).
+### 5. Text / FAQ / age badalna
+Seedha HTML mein dhoondh kar badal do. FAQ ke liye `<details class="qa">` block copy-paste karo.
 
 ---
 
-## ⚠️ Live karne se pehle ye zaroor karo
+## ⚠️ Live karne se pehle (zaroori)
 
-1. **`branding/01-zee-learn-approval-email.md` padho** — "Kidzee" trademark hai,
-   Zee Learn se permission zaroori hai
-2. **`branding/05-launch-checklist.md` follow karo** — pura checklist hai
-3. Website mein `[Parent's Name]` wale **testimonial placeholders bharo** — ye
-   khaali templates hain, asli reviews nahi
-4. Jo facility aapke paas nahi hai (CCTV, transport, daycare, meals) uska
-   **claim hata do**
-5. Bachchon ki photo par **parents ki likhit permission** lo
-
----
-
-## Test karna
-
-Bas `index.html` par **double-click** kar do — browser mein khul jaayegi.
-Kuch install karne ki zaroorat nahi.
+1. **`branding/01-zee-learn-approval-email.md` padho** — "Kidzee" trademark hai, Zee Learn se permission lo
+2. **3 testimonials bharo** — `[Parent ka naam]` wale khaali template hain, **asli reviews nahi**
+3. **`CONFIG.offerEnds`** mein asli date daalo
+4. **`CCTV ki suvidha*`** — hero mein likha hai; **agar CCTV nahi hai to hata do**
+5. **Day Care** — agar nahi chalate to program section aur FAQ se hata do
+6. Timings (8:30–1:30) aur age bands check kar lo
+7. Bacchon ki photo par **parents ki likhit permission** lo
+8. Footer/social ke `href="#"` ko asli Facebook/Instagram link se badlo
+9. Poora checklist: `branding/05-launch-checklist.md`
 
 ---
 
 ## Technical
 
-- Pure HTML5 + CSS3 + vanilla JavaScript, **ek self-contained file mein**
-- Zero dependencies, zero build step, zero backend
-- Fonts: Baloo 2 + Nunito (Google Fonts, Devanagari support ke saath)
-- Icons: emoji + inline SVG (koi icon library nahi)
-- Form: `wa.me` deep link se WhatsApp par jaata hai — koi server nahi chahiye
-- Browsers: Chrome, Firefox, Safari, Edge + Android/iOS mobile browsers
-- Page weight: ~110 KB (photos ke bina)
+Pure HTML5 + CSS3 + vanilla JS, ek self-contained file. Zero dependencies, zero backend.
+Fonts: Baloo 2 + Nunito (Google Fonts). Icons: emoji + inline SVG.
+Forms `wa.me` deep link se WhatsApp par jaate hain.
+Chrome, Firefox, Safari, Edge + Android/iOS mobile browsers.
