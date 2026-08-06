@@ -1,0 +1,8 @@
+This empty file tells GitHub Pages to serve the repository as plain static
+files instead of running it through Jekyll.
+
+Why it matters here:
+- The site is plain HTML/CSS/JS, so Jekyll processing adds nothing.
+- Jekyll silently skips files and folders whose names begin with "_" or ".".
+  Without this file, any such asset added later would 404 on the live site.
+- Builds finish faster and cannot fail on Jekyll parsing errors.
