@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 340" role="img" aria-label="Krishna Kant Chaturvedy Advocate emblem">
+  <title>Advocate KC Emblem</title>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e3c37a"/>
+      <stop offset="45%" stop-color="#c9a24a"/>
+      <stop offset="100%" stop-color="#9c7a2c"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1b2c50"/>
+      <stop offset="100%" stop-color="#0c1729"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer gold arc -->
+  <path d="M28 268 A172 172 0 0 1 372 268" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M52 268 A148 148 0 0 1 348 268" fill="none" stroke="url(#gold)" stroke-width="2.5" opacity=".5" stroke-linecap="round"/>
+
+  <!-- Scales of justice -->
+  <g fill="url(#navy)">
+    <circle cx="200" cy="40" r="9"/>
+    <rect x="196" y="48" width="8" height="16" rx="2"/>
+    <rect x="108" y="66" width="184" height="7" rx="3.5"/>
+    <rect x="194" y="73" width="12" height="66" rx="3"/>
+  </g>
+  <!-- chains -->
+  <g stroke="url(#navy)" stroke-width="2.6" fill="none" stroke-linecap="round">
+    <path d="M120 74 L138 104 M120 74 L102 104"/>
+    <path d="M280 74 L298 104 M280 74 L262 104"/>
+  </g>
+  <!-- pans -->
+  <path d="M92 104 H148 A28 28 0 0 1 92 104 Z" fill="url(#navy)"/>
+  <path d="M252 104 H308 A28 28 0 0 1 252 104 Z" fill="url(#navy)"/>
+
+  <!-- KC monogram: fluted pillar as stem of K -->
+  <g>
+    <!-- pillar capital -->
+    <rect x="140" y="146" width="40" height="8" rx="2" fill="url(#gold)"/>
+    <!-- pillar shaft -->
+    <rect x="147" y="154" width="26" height="72" fill="url(#gold)"/>
+    <g stroke="#8a6a22" stroke-width="1.4" opacity=".55">
+      <path d="M154 156 V224 M160 156 V224 M166 156 V224"/>
+    </g>
+    <!-- pillar base -->
+    <rect x="138" y="226" width="44" height="9" rx="2" fill="url(#gold)"/>
+    <!-- K arms -->
+    <path d="M182 154 L214 154 L186 190 L216 235 L184 235 L164 200 Z" fill="url(#navy)"/>
+    <!-- C -->
+    <path d="M292 172 a44 44 0 1 0 0 46 l20 12 a62 62 0 1 1 0 -70 Z" fill="url(#navy)"/>
+  </g>
+
+  <!-- Lady Justice silhouette (left) -->
+  <g fill="url(#gold)" transform="translate(46,120) scale(0.92)">
+    <circle cx="34" cy="14" r="10"/>
+    <rect x="22" y="10" width="24" height="7" rx="3" opacity=".75"/>
+    <path d="M34 24 c-13 0 -18 12 -19 26 l-6 62 h50 l-6 -62 c-1 -14 -6 -26 -19 -26 z"/>
+    <rect x="8" y="30" width="52" height="4.5" rx="2.2"/>
+    <path d="M12 34 v10 M56 34 v10" stroke="url(#gold)" stroke-width="2.4"/>
+    <path d="M4 44 h16 a8 8 0 0 1 -16 0 z"/>
+    <path d="M48 44 h16 a8 8 0 0 1 -16 0 z"/>
+    <rect x="60" y="40" width="4" height="76" rx="2"/>
+    <path d="M58 116 h8 l-4 12 z"/>
+  </g>
+
+  <!-- Family silhouette (right) -->
+  <g fill="url(#navy)" transform="translate(292,132)">
+    <!-- woman -->
+    <circle cx="16" cy="12" r="10"/>
+    <path d="M16 23 c-10 0 -14 9 -15 20 l-4 61 h38 l-4 -61 c-1 -11 -5 -20 -15 -20 z"/>
+    <!-- child -->
+    <circle cx="45" cy="42" r="8"/>
+    <path d="M45 51 c-8 0 -11 7 -11 15 v38 h22 V66 c0 -8 -3 -15 -11 -15 z"/>
+    <!-- man -->
+    <circle cx="76" cy="10" r="11"/>
+    <path d="M76 22 c-12 0 -17 9 -17 21 v61 h34 V43 c0 -12 -5 -21 -17 -21 z"/>
+  </g>
+
+  <!-- Open book swooshes -->
+  <g fill="none" stroke="url(#navy)" stroke-width="7" stroke-linecap="round">
+    <path d="M60 286 C120 262 176 264 198 286"/>
+    <path d="M340 286 C280 262 224 264 202 286"/>
+  </g>
+  <g fill="none" stroke="url(#gold)" stroke-width="3" stroke-linecap="round" opacity=".85">
+    <path d="M74 300 C128 280 178 282 198 300"/>
+    <path d="M326 300 C272 280 222 282 202 300"/>
+  </g>
+</svg>
