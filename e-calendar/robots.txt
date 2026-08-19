@@ -1,3 +1,8 @@
-# Private password-protected calendar — keep it out of search results.
+# Private password-protected calendar — we do not want it in search results.
+#
+# Note: crawlers only read robots.txt from the DOMAIN ROOT
+# (niitudit-ai.github.io/robots.txt), which this repo does not control, so this
+# file is a statement of intent rather than an actual block. The real signal is
+# the <meta name="robots" content="noindex, nofollow"> tag in index.html.
 User-agent: *
 Disallow: /

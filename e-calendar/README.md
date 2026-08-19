@@ -129,7 +129,7 @@ e-calendar/
 ├── index.html                  page ka dhaancha
 ├── manifest.webmanifest        PWA (Add to Home screen)
 ├── sw.js                       offline caching
-├── robots.txt                  Google se chhupane ke liye
+├── robots.txt                  (dekhein neeche ka note)
 ├── .nojekyll
 └── assets/
     ├── css/app.css             design system, dark mode, print layout
@@ -141,6 +141,13 @@ e-calendar/
 
 Koi framework nahi, koi build step nahi, koi npm install nahi. Plain HTML + CSS + JS.
 `index.html` ko seedha browser mein khol kar bhi chala sakte hain.
+
+> **Google se chhupane ke baare mein:** search engine sirf **domain ke root** ka
+> `robots.txt` padhte hain — yaani `niitudit-ai.github.io/robots.txt`, jo GitHub ke
+> control mein hai, hamare. Isliye `e-calendar/robots.txt` sirf apni marzi zaahir
+> karta hai, wo asal mein rok nahi lagata. Jo cheez **asal mein kaam karti hai** wo
+> `index.html` ke andar `<meta name="robots" content="noindex, nofollow">` hai —
+> use hata na dein.
 
 ---
 
