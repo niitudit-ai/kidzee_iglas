@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en-IN" data-board="house" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-Calendar — House &amp; Class Board</title>
+<meta name="description" content="Private e-calendar for important dates, festivals, awareness days and monthly House &amp; Class board themes.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#2f5cf0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="E-Calendar">
+
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+
+<body class="is-locked">
+
+<!-- ============================= LOCK SCREEN ============================= -->
+<div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+  <div class="lock__card" id="lockCard">
+    <img class="lock__logo" src="assets/img/favicon.svg" alt="" width="66" height="66">
+    <h2 id="lockTitle">E-Calendar Access</h2>
+    <p>Password daaliye, phir apna access chuniye.</p>
+
+    <form id="lockForm" novalidate>
+      <div class="lock__pw">
+        <label class="label" for="pw">Password</label>
+        <input id="pw" type="password" autocomplete="current-password"
+               placeholder="Enter password" spellcheck="false" required>
+        <button class="lock__reveal" type="button" id="pwToggle"
+                aria-label="Show password" title="Show / hide password">👁️</button>
+      </div>
+
+      <div class="lock__actions">
+        <button class="btn btn--primary" type="submit">👑 Admin Login</button>
+        <button class="btn" type="button" id="viewerBtn">👁️ Viewer Login</button>
+      </div>
+
+      <p class="lock__msg" id="lockMsg" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="lock__hint">
+      <b>Admin</b> events aur board themes add / edit / delete kar sakta hai.<br>
+      <b>Viewer</b> sirf dekh sakta hai — kuch badal nahi sakta.
+    </p>
+  </div>
+</div>
+
+<!-- =============================== HEADER =============================== -->
+<header class="hdr" id="hdr" hidden>
+  <div class="hdr__in">
+    <div class="brand">
+      <span class="brand__logo"><img src="assets/img/favicon.svg" alt="" width="40" height="40"></span>
+      <div>
+        <h1 id="appTitle">House E-Calendar</h1>
+        <small id="appSub">Important dates, festivals &amp; activities</small>
+      </div>
+    </div>
+
+    <div class="hdr__tools">
+      <div class="search">
+        <span class="search__icon" aria-hidden="true">🔍</span>
+        <label class="sr-only" for="q">Search events</label>
+        <input type="search" id="q" placeholder="Search events…" autocomplete="off" spellcheck="false">
+        <button class="search__clear" type="button" id="qClear" aria-label="Clear search" hidden>×</button>
+      </div>
+
+      <div class="board-switch" role="tablist" aria-label="Board">
+        <button role="tab" type="button" data-board="house" aria-selected="true">🏠 House</button>
+        <button role="tab" type="button" data-board="class" aria-selected="false">🎓 Class</button>
+      </div>
+
+      <button class="btn btn--icon" type="button" id="themeBtn"
+              aria-label="Toggle dark mode" title="Dark / light mode">🌙</button>
+
+      <span class="role" id="roleBadge">👁️ Viewer</span>
+
+      <div class="menu">
+        <button class="btn btn--icon" type="button" id="menuBtn"
+                aria-haspopup="true" aria-expanded="false" aria-label="More options" title="More">⋮</button>
+
+        <div class="menu__panel" id="menuPanel" role="menu" hidden>
+          <div class="menu__label">Calendar</div>
+          <button type="button" role="menuitem" data-act="print">🖨️ <span>Print / save as PDF</span></button>
+          <button type="button" role="menuitem" data-act="ics">📅 <span>Export to Google Calendar (.ics)</span></button>
+
+          <div class="menu__sep"></div>
+          <div class="menu__label">Backup</div>
+          <button type="button" role="menuitem" data-act="export">⬇️ <span>Download backup (.json)</span></button>
+          <button type="button" role="menuitem" data-act="import" data-admin>⬆️ <span>Restore from backup</span></button>
+          <button type="button" role="menuitem" data-act="reset" data-admin>♻️ <span>Restore default events</span></button>
+
+          <div class="menu__sep"></div>
+          <button type="button" role="menuitem" data-act="help">⌨️ <span>Keyboard shortcuts</span></button>
+          <button type="button" role="menuitem" data-act="logout" class="is-danger">🔒 <span>Lock &amp; sign out</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================================ APP ================================= -->
+<div class="shell" id="app" hidden>
+
+  <!-- visible only on paper -->
+  <div class="print-head">
+    <h1 id="printTitle">E-Calendar</h1>
+    <p id="printSub"></p>
+  </div>
+
+  <div class="toolbar">
+    <div class="seg" role="tablist" aria-label="Calendar view">
+      <button role="tab" type="button" data-view="month" aria-selected="true">Month</button>
+      <button role="tab" type="button" data-view="agenda" aria-selected="false">Agenda</button>
+      <button role="tab" type="button" data-view="year" aria-selected="false">Year</button>
+    </div>
+
+    <div class="periodnav">
+      <div class="periodnav__label" id="periodLabel" aria-live="polite">—</div>
+      <button class="btn btn--icon" type="button" id="prevBtn" aria-label="Previous" title="Previous (←)">‹</button>
+      <button class="btn" type="button" id="todayBtn" title="Jump to today (T)">Today</button>
+      <button class="btn btn--icon" type="button" id="nextBtn" aria-label="Next" title="Next (→)">›</button>
+    </div>
+
+    <div class="toolbar__right">
+      <label class="sr-only" for="jump">Jump to month</label>
+      <input type="month" id="jump" style="width:auto">
+      <button class="btn btn--primary" type="button" id="addBtn" hidden title="New event (N)">＋ New event</button>
+    </div>
+  </div>
+
+  <div class="filterbar">
+    <span class="filterbar__title">Categories</span>
+    <div class="chips" id="chips"></div>
+    <button class="btn btn--sm btn--ghost" type="button" id="chipsReset">Show all</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <!-- MONTH -->
+      <section class="card panel" id="viewMonth" aria-label="Month view">
+        <div class="dow" aria-hidden="true">
+          <span class="is-sun">Sun</span><span>Mon</span><span>Tue</span><span>Wed</span>
+          <span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="grid-month" id="monthGrid"></div>
+      </section>
+
+      <!-- AGENDA -->
+      <section class="card panel" id="viewAgenda" aria-label="Agenda view" hidden>
+        <div class="panel__head">
+          <div>
+            <h2>📋 Agenda</h2>
+            <p id="agendaSub">Upcoming events, date wise</p>
+          </div>
+        </div>
+        <div class="agenda" id="agendaList"></div>
+      </section>
+
+      <!-- YEAR -->
+      <section class="card panel" id="viewYear" aria-label="Year view" hidden>
+        <div class="panel__head">
+          <div>
+            <h2>🗓️ Year at a glance</h2>
+            <p id="yearSub">Kisi bhi month par click karke uska calendar kholein</p>
+          </div>
+        </div>
+        <div class="grid-year" id="yearGrid"></div>
+      </section>
+
+      <!-- BOARD -->
+      <section class="card panel" id="boardPanel" style="margin-top:18px" aria-label="House and Class board">
+        <div class="panel__head">
+          <div>
+            <h2>🏫 House &amp; Class Board</h2>
+            <p>Themes &amp; activities for <b id="boardMonthName">—</b></p>
+          </div>
+          <button class="btn btn--primary btn--sm" type="button" id="boardAddBtn" hidden>＋ Add theme</button>
+        </div>
+
+        <div class="boards">
+          <div class="board board--house">
+            <div class="board__head">
+              <h3>🏠 House Board</h3>
+              <span class="board__count" id="houseCount">0</span>
+            </div>
+            <div class="board__items" id="houseItems"></div>
+          </div>
+
+          <div class="board board--class">
+            <div class="board__head">
+              <h3>🎓 Class Board</h3>
+              <span class="board__count" id="classCount">0</span>
+            </div>
+            <div class="board__items" id="classItems"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="side">
+      <div class="today-card">
+        <small>Today</small>
+        <b id="todayDate">—</b>
+        <span id="todayDow">—</span>
+        <div class="today-card__note" id="todayNote" hidden></div>
+      </div>
+
+      <section class="card panel">
+        <div class="panel__head">
+          <div>
+            <h3>⏳ Coming up</h3>
+            <p>Next 60 days</p>
+          </div>
+        </div>
+        <div class="upcoming" id="upcomingList"></div>
+      </section>
+
+      <section class="card panel">
+        <div class="panel__head">
+          <div>
+            <h3>📊 This month</h3>
+            <p id="statsSub">—</p>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="statTotal">0</b><span>Events</span></div>
+          <div class="stat"><b id="statStar">0</b><span>Starred</span></div>
+          <div class="stat"><b id="statBoard">0</b><span>Board</span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<footer class="footer" id="footer" hidden>
+  <p>
+    Shortcuts: <kbd>←</kbd> <kbd>→</kbd> month · <kbd>T</kbd> today · <kbd>N</kbd> new event
+    · <kbd>/</kbd> search · <kbd>M</kbd> <kbd>A</kbd> <kbd>Y</kbd> views · <kbd>Esc</kbd> close
+  </p>
+  <p class="muted">E-Calendar · data is saved in this browser · take a backup regularly</p>
+</footer>
+
+<!-- ============================ DAY DRAWER ============================== -->
+<div class="scrim" id="drawerScrim" hidden></div>
+
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden>
+  <div class="drawer__head">
+    <div style="flex:1;min-width:0">
+      <h2 id="drawerTitle">—</h2>
+      <p id="drawerSub">—</p>
+    </div>
+    <button class="btn btn--icon btn--ghost" type="button" id="drawerClose" aria-label="Close">✕</button>
+  </div>
+
+  <div class="drawer__body" id="drawerBody"></div>
+
+  <div class="drawer__foot" id="drawerFoot" hidden>
+    <button class="btn btn--primary btn--block" type="button" id="drawerAdd">＋ Add event on this day</button>
+  </div>
+</aside>
+
+<!-- ============================ EVENT MODAL ============================= -->
+<div class="scrim" id="eventScrim" hidden></div>
+
+<div class="modal" id="eventModal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle" hidden>
+  <div class="modal__card">
+    <div class="modal__head">
+      <h2 id="eventModalTitle">Add event</h2>
+      <button class="btn btn--icon btn--ghost" type="button" data-close-event aria-label="Close">✕</button>
+    </div>
+
+    <form class="modal__body" id="eventForm" novalidate>
+      <div class="field">
+        <label for="evTitle">Title *</label>
+        <input id="evTitle" type="text" maxlength="90" required placeholder="e.g. Annual Day rehearsal">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="evDate">Date *</label>
+          <input id="evDate" type="date" required>
+        </div>
+        <div class="field">
+          <label for="evCat">Category</label>
+          <select id="evCat"></select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="evTime">Start time</label>
+          <input id="evTime" type="time">
+        </div>
+        <div class="field">
+          <label for="evEnd">End time</label>
+          <input id="evEnd" type="time">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="evDesc">Description</label>
+        <textarea id="evDesc" maxlength="600" placeholder="Details, venue, who is participating…"></textarea>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="evStar">
+        <span>⭐ Mark as important
+          <small>Star lag jaayega aur "Starred" count mein aayega</small>
+        </span>
+      </label>
+
+      <label class="check" style="margin-bottom:0">
+        <input type="checkbox" id="evAnnual">
+        <span>🔁 Repeat every year
+          <small>Fixed-date days ke liye (Republic Day, Teachers' Day). Festivals ke liye nahi — unki date badalti hai.</small>
+        </span>
+      </label>
+    </form>
+
+    <div class="modal__foot">
+      <button class="btn btn--danger" type="button" id="evDelete" hidden>🗑️ Delete</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" data-close-event>Cancel</button>
+      <button class="btn btn--primary" type="submit" form="eventForm">Save event</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ BOARD MODAL ============================= -->
+<div class="scrim" id="boardScrim" hidden></div>
+
+<div class="modal" id="boardModal" role="dialog" aria-modal="true" aria-labelledby="boardModalTitle" hidden>
+  <div class="modal__card">
+    <div class="modal__head">
+      <h2 id="boardModalTitle">Add board theme</h2>
+      <button class="btn btn--icon btn--ghost" type="button" data-close-board aria-label="Close">✕</button>
+    </div>
+
+    <form class="modal__body" id="boardForm" novalidate>
+      <div class="field-row">
+        <div class="field">
+          <label for="bdType">Board</label>
+          <select id="bdType">
+            <option value="house">🏠 House Board</option>
+            <option value="class">🎓 Class Board</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bdMonth">Month</label>
+          <input id="bdMonth" type="month" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="bdTitle">Theme / activity *</label>
+        <input id="bdTitle" type="text" maxlength="90" required placeholder="e.g. Independence Day decoration">
+      </div>
+
+      <div class="field" style="margin-bottom:0">
+        <label for="bdDesc">Description</label>
+        <textarea id="bdDesc" maxlength="600" placeholder="Kya banega, kaun karega, kya material chahiye…"></textarea>
+      </div>
+    </form>
+
+    <div class="modal__foot">
+      <button class="btn btn--danger" type="button" id="bdDelete" hidden>🗑️ Delete</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" data-close-board>Cancel</button>
+      <button class="btn btn--primary" type="submit" form="boardForm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= HELP MODAL ============================= -->
+<div class="scrim" id="helpScrim" hidden></div>
+
+<div class="modal" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+  <div class="modal__card">
+    <div class="modal__head">
+      <h2 id="helpTitle">⌨️ Keyboard shortcuts</h2>
+      <button class="btn btn--icon btn--ghost" type="button" data-close-help aria-label="Close">✕</button>
+    </div>
+    <div class="modal__body">
+      <p><kbd>←</kbd> / <kbd>→</kbd> — previous / next month (year view mein previous / next year)</p>
+      <p><kbd>T</kbd> — aaj ki date par jaayein</p>
+      <p><kbd>M</kbd> / <kbd>A</kbd> / <kbd>Y</kbd> — Month / Agenda / Year view</p>
+      <p><kbd>N</kbd> — naya event (sirf admin)</p>
+      <p><kbd>/</kbd> — search box par focus</p>
+      <p><kbd>D</kbd> — dark / light mode</p>
+      <p><kbd>P</kbd> — print / save as PDF</p>
+      <p><kbd>Esc</kbd> — koi bhi popup band karein</p>
+    </div>
+    <div class="modal__foot">
+      <span class="spacer"></span>
+      <button class="btn btn--primary" type="button" data-close-help>Got it</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>
