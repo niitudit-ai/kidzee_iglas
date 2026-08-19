@@ -1,0 +1,27 @@
+{
+  "name": "E-Calendar — House & Class Board",
+  "short_name": "E-Calendar",
+  "description": "Private school e-calendar: important dates, festivals, awareness days and monthly House & Class board themes.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f2f6fd",
+  "theme_color": "#2f5cf0",
+  "lang": "en-IN",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "assets/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/img/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
