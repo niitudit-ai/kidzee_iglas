@@ -32,12 +32,31 @@
     viewer: 'c96038350d6037a46b589ba2ecd594b6803c09729aaeb0b795e9fb4a48127759'
   };
 
+  /* The shared calendar everyone sees. This file lives in the repo, so GitHub
+     Pages serves it to every visitor — that is what makes one person's changes
+     visible to everybody. Admin edits are a local draft until published. */
+  const SHARED = {
+    file: 'data/calendar.json',
+    repo: 'niitudit-ai/kidzee_iglas',
+    branch: 'main',
+    path: 'e-calendar/data/calendar.json'
+  };
+
+  const GH = {
+    edit: 'https://github.com/' + SHARED.repo + '/edit/' + SHARED.branch + '/' + SHARED.path,
+    upload: 'https://github.com/' + SHARED.repo + '/upload/' + SHARED.branch + '/' +
+            SHARED.path.replace(/\/[^/]+$/, ''),
+    history: 'https://github.com/' + SHARED.repo + '/commits/' + SHARED.branch + '/' + SHARED.path
+  };
+
   const KEYS = {
     events: 'ECAL_V2_EVENTS',
     board: 'ECAL_V2_BOARD',
     hidden: 'ECAL_V2_HIDDEN',
     prefs: 'ECAL_V2_PREFS',
     role: 'ECAL_V2_ROLE',
+    baseAt: 'ECAL_V2_BASE_AT',     // publishedAt our local copy started from
+    pubName: 'ECAL_V2_PUB_NAME',   // remembered "published by" name
     // keys written by the previous version — read once, then left alone
     oldEvents: 'PRIVATE_ECALENDAR_EVENTS_FINAL',
     oldBoard: 'PRIVATE_ECALENDAR_BOARD_ACTIVITIES',
@@ -310,7 +329,11 @@
     events: [],
     board: [],
     hidden: [],
-    prefs: { board: 'house', theme: 'light' }
+    prefs: { board: 'house', theme: 'light' },
+    published: null,            // the shared file, once fetched
+    offline: false,             // shared file could not be reached
+    conflict: false,            // somebody else published after our draft began
+    hasLocal: false             // this browser already had saved data
   };
 
   function normaliseEvent(raw) {
@@ -346,7 +369,9 @@
 
   const seedEvent = (s) => normaliseEvent(Object.assign({}, s, { seed: 1 }));
 
-  function loadData() {
+  /* Whatever this browser already had. Runs before the shared file arrives, so
+     the app still works offline or if GitHub is unreachable. */
+  function loadLocal() {
     state.prefs = Object.assign({ board: 'house', theme: 'light' },
       readJSON(KEYS.prefs, null) || {});
     state.hidden = (readJSON(KEYS.hidden, []) || []).map(String);
@@ -356,12 +381,15 @@
     if (Array.isArray(stored)) {
       state.events = stored.map(normaliseEvent);
       state.board = (readJSON(KEYS.board, []) || []).map(normaliseBoardItem);
+      state.hasLocal = true;
     } else {
       migrateFromV1();
     }
+  }
 
-    // Bring in seed events that are new in this version, but respect anything
-    // the admin has deliberately deleted.
+  /* Only used when the shared file cannot be read: fill in built-in events so
+     a brand new browser is not staring at an empty calendar. */
+  function mergeSeeds() {
     const have = new Set(state.events.map((e) => e.id));
     const gone = new Set(state.hidden);
     let added = 0;
@@ -369,6 +397,133 @@
       if (!have.has(s.id) && !gone.has(s.id)) { state.events.push(seedEvent(s)); added++; }
     });
     if (added) saveEvents();
+  }
+
+  /* == 4b · THE SHARED FILE =============================================== */
+
+  /* Read the calendar everyone shares. Cache-busted and no-store, because a
+     stale copy here would mean somebody misses a change. */
+  function fetchPublished() {
+    if (!window.fetch || location.protocol === 'file:') return Promise.resolve(null);
+
+    return fetch(SHARED.file + '?t=' + Date.now(), { cache: 'no-store' })
+      .then((res) => (res && res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || !Array.isArray(data.events)) return null;
+        return {
+          publishedAt: String(data.publishedAt || ''),
+          publishedBy: String(data.publishedBy || ''),
+          events: data.events.map(normaliseEvent),
+          board: Array.isArray(data.board) ? data.board.map(normaliseBoardItem) : [],
+          hidden: Array.isArray(data.hidden) ? data.hidden.map(String) : []
+        };
+      })
+      .catch(() => null);
+  }
+
+  /* A content fingerprint that ignores ordering and publish metadata, so we can
+     tell "my draft differs from what is live" from "identical, nothing to do". */
+  const evSig = (e) =>
+    [e.id, e.title, e.date, e.time, e.end, e.cat, e.desc, e.star, e.annual].join('\u0001');
+  const bdSig = (b) => [b.id, b.board, b.month, b.title, b.desc].join('\u0001');
+
+  function signature(events, board, hidden) {
+    return JSON.stringify([
+      events.map(evSig).sort(),
+      board.map(bdSig).sort(),
+      hidden.slice().sort()
+    ]);
+  }
+
+  function localSignature() {
+    return signature(state.events, state.board, state.hidden);
+  }
+
+  function publishedSignature() {
+    const p = state.published;
+    return p ? signature(p.events, p.board, p.hidden) : null;
+  }
+
+  /* true when the admin has edits that nobody else can see yet */
+  function hasUnpublished() {
+    const pub = publishedSignature();
+    return pub !== null && pub !== localSignature();
+  }
+
+  /* Throw away the local copy and take the shared one. */
+  function adoptPublished() {
+    const p = state.published;
+    if (!p) return;
+    state.events = p.events.map((e) => Object.assign({}, e));
+    state.board = p.board.map((b) => Object.assign({}, b));
+    state.hidden = p.hidden.slice();
+    state.conflict = false;
+    saveEvents();
+    saveBoard();
+    saveHidden();
+    writeJSON(KEYS.baseAt, p.publishedAt);
+  }
+
+  /* Decide what this person actually sees. Called after login, because the
+     answer depends on whether they are the admin. */
+  function resolveWorkingSet() {
+    if (!state.published) {          // GitHub unreachable / opened from disk
+      state.offline = true;
+      mergeSeeds();
+      return;
+    }
+    state.offline = false;
+
+    // nothing saved here yet, or local is identical to live: just use live
+    if (!state.hasLocal || !hasUnpublished()) {
+      adoptPublished();
+      return;
+    }
+
+    // local differs. Only the admin has a reason to keep unpublished edits.
+    if (!isAdmin()) {
+      adoptPublished();
+      return;
+    }
+
+    // did someone else publish while we were drafting?
+    const base = readJSON(KEYS.baseAt, '');
+    state.conflict = !!(base && state.published.publishedAt && base !== state.published.publishedAt);
+  }
+
+  /* Re-read the shared file and apply it if we have nothing of our own. */
+  function checkForUpdates(announce) {
+    return fetchPublished().then((pub) => {
+      if (!pub) {
+        if (announce) toast('Shared calendar padhi nahi ja saki. Internet dekh lein.', 'err');
+        return false;
+      }
+
+      const before = publishedSignature();
+      state.published = pub;
+      const after = publishedSignature();
+      state.offline = false;
+
+      if (hasUnpublished() && isAdmin()) {
+        // keep the admin's draft, but flag if the live copy moved underneath it
+        const base = readJSON(KEYS.baseAt, '');
+        state.conflict = !!(base && pub.publishedAt && base !== pub.publishedAt);
+        renderSyncBar();
+        if (announce) {
+          toast(state.conflict
+            ? 'Nayi calendar aayi hai, par aapke bin-publish badlaav bhi hain.'
+            : 'Aapke paas bin-publish badlaav hain — pehle Publish karein.', 'info');
+        }
+        return before !== after;
+      }
+
+      adoptPublished();
+      renderAll();
+      if (announce) {
+        toast(before === after ? 'Calendar already latest hai ✓' : 'Nayi calendar aa gayi ✓', 'ok');
+      }
+      return before !== after;
+    });
   }
 
   /* Runs once: pulls the old version's events, board items and theme across so
@@ -407,6 +562,7 @@
       V1_IDS.forEach((id) => { if (!seen.has(id)) state.hidden.push(id); });
       writeJSON(KEYS.hidden, state.hidden);
 
+      state.hasLocal = true;
       toast('Purane calendar ka data le liya gaya ✓', 'ok');
     }
 
@@ -476,7 +632,12 @@
     $('footer').hidden = false;
 
     applyRole();
-    renderAll();
+
+    // the shared file decides what is shown, and that depends on the role
+    sharedReady.then(function () {
+      resolveWorkingSet();
+      renderAll();
+    });
   }
 
   function signOut() {
@@ -577,6 +738,7 @@
 
   function renderAll() {
     applyPrefs();
+    renderSyncBar();
     renderChips();
     renderPeriod();
     renderCurrentView();
@@ -1072,7 +1234,8 @@
 
   function unlockScroll() {
     const open = !$('drawer').hidden || !$('eventModal').hidden ||
-                 !$('boardModal').hidden || !$('helpModal').hidden;
+                 !$('boardModal').hidden || !$('helpModal').hidden ||
+                 !$('pubModal').hidden;
     if (!open) document.body.classList.remove('is-modal');
   }
 
@@ -1269,6 +1432,7 @@
     toast('Board theme delete ho gaya.', 'ok');
     renderBoard();
     renderSidebar();
+    renderSyncBar();
   }
 
   /* == 11 · DATA TOOLS ==================================================== */
@@ -1320,13 +1484,268 @@
       state.hidden = Array.isArray(data.hidden) ? data.hidden.map(String) : [];
 
       saveEvents(); saveBoard(); saveHidden();
-      toast('Restore ho gaya ✓ ' + state.events.length + ' events', 'ok');
+      toast('Restore ho gaya ✓ ' + state.events.length + ' events. Sabko dikhane ke liye Publish karein.', 'ok');
       renderAll();
       refreshDrawer();
     };
 
     reader.onerror = function () { toast('File padhi nahi ja saki.', 'err'); };
     reader.readAsText(file);
+  }
+
+  /* == 11b · PUBLISH: making one person's changes visible to everyone ======
+     GitHub Pages serves data/calendar.json to every visitor, so publishing is
+     simply "get this JSON into that file". There is no server and no API token
+     in the page — the admin commits it through GitHub, signed in as themselves.
+     That is deliberate: a token sitting in a public page would let anyone edit. */
+
+  function buildPublishJSON(name) {
+    return JSON.stringify({
+      app: 'e-calendar',
+      version: 2,
+      note: 'Ye calendar ki asli file hai. Sab log ise padhte hain. App ke Publish button se hi badlein.',
+      publishedAt: new Date().toISOString(),
+      publishedBy: name || '',
+      events: state.events,
+      board: state.board,
+      hidden: state.hidden
+    }, null, 2) + '\n';
+  }
+
+  /* what exactly is about to change for everybody else */
+  function diffSummary() {
+    const pub = state.published;
+    if (!pub) return null;
+
+    const count = (mineArr, theirsArr, sig) => {
+      const mine = new Map(mineArr.map((x) => [x.id, sig(x)]));
+      const theirs = new Map(theirsArr.map((x) => [x.id, sig(x)]));
+      let added = 0, removed = 0, changed = 0;
+      mine.forEach((s, id) => {
+        if (!theirs.has(id)) added++;
+        else if (theirs.get(id) !== s) changed++;
+      });
+      theirs.forEach((s, id) => { if (!mine.has(id)) removed++; });
+      return { added: added, removed: removed, changed: changed };
+    };
+
+    return {
+      events: count(state.events, pub.events, evSig),
+      board: count(state.board, pub.board, bdSig)
+    };
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true).catch(() => fallbackCopy(text));
+    }
+    return Promise.resolve(fallbackCopy(text));
+  }
+
+  /* Older browsers, and any case where the Clipboard API is blocked. Uses its
+     own off-screen textarea — the visible one sits inside a collapsed <details>
+     and cannot be selected while hidden. */
+  function fallbackCopy(text) {
+    try {
+      const ta = el('textarea', {
+        readonly: true,
+        style: 'position:fixed;top:-2000px;left:0;opacity:0;pointer-events:none'
+      });
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand && document.execCommand('copy');
+      ta.remove();
+      return !!ok;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function openPublishModal() {
+    if (!isAdmin()) return;
+    lastFocus = document.activeElement;
+
+    if (state.offline) {
+      toast('Shared file padhi nahi ja saki, isliye publish karna theek nahi. Internet dekh lein.', 'err');
+      return;
+    }
+    if (!hasUnpublished()) {
+      toast('Koi naya badlaav nahi hai — sab already publish hai ✓', 'info');
+      return;
+    }
+
+    const name = localStorage.getItem(KEYS.pubName) || '';
+    $('pubName').value = name;
+    $('pubJSON').value = buildPublishJSON(name);
+
+    // summary of what changes for everyone
+    const d = diffSummary();
+    const box = $('pubSummary');
+    box.innerHTML = '';
+    [['Events', d.events], ['Board themes', d.board]].forEach(function (row) {
+      const parts = [];
+      if (row[1].added) parts.push(row[1].added + ' naye');
+      if (row[1].changed) parts.push(row[1].changed + ' badle');
+      if (row[1].removed) parts.push(row[1].removed + ' hataye');
+      if (!parts.length) return;
+      box.appendChild(el('div', { class: 'pubrow' },
+        el('b', { text: row[0] }),
+        el('span', { text: parts.join(' · ') })
+      ));
+    });
+    if (!box.childElementCount) {
+      box.appendChild(el('div', { class: 'pubrow' }, el('span', { text: 'Chhote-mote badlaav.' })));
+    }
+
+    $('pubConflict').hidden = !state.conflict;
+    $('pubEditLink').href = GH.edit;
+    $('pubUploadLink').href = GH.upload;
+
+    $('pubScrim').hidden = false;
+    $('pubModal').hidden = false;
+    document.body.classList.add('is-modal');
+
+    // most people will just want it on the clipboard
+    copyText($('pubJSON').value).then(function (ok) {
+      $('pubCopyState').textContent = ok
+        ? '✓ JSON copy ho gaya — ab step 2'
+        : 'Copy nahi hua, neeche box se khud copy kar lein.';
+    });
+
+    $('pubCopyBtn').focus();
+  }
+
+  function closePublishModal() {
+    if ($('pubModal').hidden) return;
+    $('pubModal').hidden = true;
+    $('pubScrim').hidden = true;
+    unlockScroll();
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  function rememberPubName() {
+    const name = $('pubName').value.trim().slice(0, 40);
+    try { localStorage.setItem(KEYS.pubName, name); } catch (err) { /* ignore */ }
+    $('pubJSON').value = buildPublishJSON(name);
+    return name;
+  }
+
+  /* Admin says "I have committed it on GitHub". We re-read the live file and
+     confirm it really landed, rather than taking their word for it. */
+  function verifyPublished() {
+    const btn = $('pubVerifyBtn');
+    btn.disabled = true;
+    btn.textContent = 'Dekh rahe hain…';
+
+    const mine = localSignature();
+
+    return fetchPublished().then(function (pub) {
+      btn.disabled = false;
+      btn.textContent = '✅ Ho gaya, check karein';
+
+      if (!pub) {
+        toast('Live file padhi nahi ja saki. Thodi der baad dobara.', 'err');
+        return;
+      }
+
+      state.published = pub;
+
+      if (signature(pub.events, pub.board, pub.hidden) === mine) {
+        writeJSON(KEYS.baseAt, pub.publishedAt);
+        state.conflict = false;
+        closePublishModal();
+        toast('Publish ho gaya ✓ Ab ye sabko dikhega.', 'ok');
+        renderAll();
+      } else {
+        toast('Abhi live file mein purana data hai. GitHub par commit hone ke baad 1–2 minute lagte hain — dobara check karein.', 'info');
+      }
+    });
+  }
+
+  function discardDraft() {
+    if (!state.published) return;
+    if (!window.confirm('Aapke bin-publish badlaav hat jaayenge aur live calendar aa jaayegi. Theek hai?')) return;
+    adoptPublished();
+    toast('Live calendar le li gayi.', 'ok');
+    closePublishModal();
+    renderAll();
+    refreshDrawer();
+  }
+
+  /* == 11c · SYNC BAR ===================================================== */
+
+  function fmtStamp(isoStamp) {
+    if (!isoStamp) return 'pata nahi';
+    const d = new Date(isoStamp);
+    if (isNaN(d)) return 'pata nahi';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
+      ', ' + d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function renderSyncBar() {
+    const bar = $('syncBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    bar.className = 'syncbar';
+
+    // could not reach the shared file at all
+    if (state.offline) {
+      bar.classList.add('syncbar--warn');
+      bar.appendChild(el('span', { class: 'syncbar__txt' },
+        el('b', { text: '⚠️ Offline — ' }),
+        'ye aapke browser ka data hai, shared calendar nahi. Internet aane par refresh karein.'
+      ));
+      bar.hidden = false;
+      return;
+    }
+
+    const pub = state.published;
+    const unpublished = isAdmin() && hasUnpublished();
+
+    if (unpublished) {
+      bar.classList.add('syncbar--warn');
+
+      bar.appendChild(el('span', { class: 'syncbar__txt' },
+        el('b', { text: state.conflict ? '⚠️ Publish karna baaki hai (dhyan dein) — ' : '📢 Publish karna baaki hai — ' }),
+        state.conflict
+          ? 'aapke badlaav abhi sirf aapko dikh rahe hain, aur is beech kisi ne nayi calendar publish ki hai.'
+          : 'aapke badlaav abhi sirf aapko dikh rahe hain, kisi aur ko nahi.'
+      ));
+
+      bar.appendChild(el('div', { class: 'syncbar__act' },
+        el('button', {
+          class: 'btn btn--primary btn--sm', type: 'button',
+          onclick: openPublishModal
+        }, '📢 Sabko dikhaayein'),
+        el('button', {
+          class: 'btn btn--sm', type: 'button',
+          title: 'Apne badlaav hata kar live calendar le aayein',
+          onclick: discardDraft
+        }, 'Hata dein')
+      ));
+
+      bar.hidden = false;
+      return;
+    }
+
+    // everything in sync — show who updated it last, so everyone can see
+    bar.classList.add('syncbar--ok');
+    bar.appendChild(el('span', { class: 'syncbar__txt' },
+      el('b', { text: '✅ Sabko yahi dikh raha hai' }),
+      ' · last update ' + fmtStamp(pub && pub.publishedAt) +
+        (pub && pub.publishedBy ? ' · ' + pub.publishedBy : '')
+    ));
+
+    bar.appendChild(el('div', { class: 'syncbar__act' },
+      el('button', {
+        class: 'btn btn--sm', type: 'button',
+        onclick: function () { checkForUpdates(true); }
+      }, '🔄 Refresh')
+    ));
+
+    bar.hidden = false;
   }
 
   function restoreDefaults() {
@@ -1569,6 +1988,9 @@
       closeMenu();
 
       switch (btn.dataset.act) {
+        case 'publish': openPublishModal(); break;
+        case 'sync':   checkForUpdates(true); break;
+        case 'history': window.open(GH.history, '_blank', 'noopener'); break;
         case 'print':  renderPrintHead(); window.print(); break;
         case 'ics':    exportICS(); break;
         case 'export': exportBackup(); break;
@@ -1635,6 +2057,24 @@
     $('boardScrim').addEventListener('click', closeBoardModal);
     $$('[data-close-board]').forEach((b) => b.addEventListener('click', closeBoardModal));
 
+    // ---- publish modal
+    $('pubScrim').addEventListener('click', closePublishModal);
+    $$('[data-close-pub]').forEach((b) => b.addEventListener('click', closePublishModal));
+    $('pubName').addEventListener('input', rememberPubName);
+    $('pubCopyBtn').addEventListener('click', function () {
+      const name = rememberPubName();
+      copyText(buildPublishJSON(name)).then(function (ok) {
+        $('pubCopyState').textContent = ok ? '✓ Copy ho gaya' : 'Copy nahi hua — box se khud copy karein';
+        toast(ok ? 'JSON copy ho gaya ✓' : 'Copy nahi hua, neeche box se copy karein.', ok ? 'ok' : 'err');
+      });
+    });
+    $('pubDownloadBtn').addEventListener('click', function () {
+      download('calendar.json', buildPublishJSON(rememberPubName()), 'application/json');
+      toast('calendar.json download ho gayi ✓', 'ok');
+    });
+    $('pubVerifyBtn').addEventListener('click', verifyPublished);
+    $('pubDiscardBtn').addEventListener('click', discardDraft);
+
     // ---- help modal
     $('helpScrim').addEventListener('click', closeHelp);
     $$('[data-close-help]').forEach((b) => b.addEventListener('click', closeHelp));
@@ -1663,6 +2103,7 @@
     if (e.key === 'Escape') {
       if (!$('menuPanel').hidden) return closeMenu();
       if (!$('helpModal').hidden) return closeHelp();
+      if (!$('pubModal').hidden) return closePublishModal();
       if (!$('eventModal').hidden) return closeEventModal();
       if (!$('boardModal').hidden) return closeBoardModal();
       if (!$('drawer').hidden) return closeDrawer();
@@ -1683,7 +2124,7 @@
 
     // don't hijack keys while a form is open or the user is typing
     if (typing) return;
-    if (!$('eventModal').hidden || !$('boardModal').hidden) return;
+    if (!$('eventModal').hidden || !$('boardModal').hidden || !$('pubModal').hidden) return;
 
     switch (e.key) {
       case 'ArrowLeft':  e.preventDefault(); step(-1); break;
@@ -1711,10 +2152,20 @@
     });
   }
 
+  let sharedReady = Promise.resolve();
+
   function boot() {
-    loadData();
+    loadLocal();
     applyPrefs();
     wire();
+
+    // start pulling the shared calendar straight away, while the user is still
+    // typing the password
+    sharedReady = fetchPublished().then(function (pub) {
+      state.published = pub;
+      state.offline = !pub;
+      return pub;
+    });
 
     let saved = null;
     try { saved = sessionStorage.getItem(KEYS.role); } catch (err) { /* ignore */ }

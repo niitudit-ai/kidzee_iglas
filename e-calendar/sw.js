@@ -1,7 +1,11 @@
 /* E-Calendar service worker — offline app shell.
    Bump CACHE_VERSION whenever index.html / app.css / app.js change,
    otherwise returning visitors keep the old cached copy. */
-const CACHE_VERSION = 'ecal-v2.0.0';
+const CACHE_VERSION = 'ecal-v2.1.0';
+
+/* The shared calendar must NEVER be served from cache first — a stale copy here
+   means somebody misses a change that was already published. */
+const LIVE_DATA = 'data/calendar.json';
 
 const SHELL = [
   './',
@@ -34,7 +38,6 @@ self.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') self.skipWaiting();
 });
 
-/* Stale-while-revalidate: instant load from cache, silent refresh in background. */
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -42,6 +45,24 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  /* Network-first for the shared calendar: always try the real thing, and only
+     fall back to the last known copy when there is no connection. */
+  if (url.pathname.endsWith('/' + LIVE_DATA)) {
+    event.respondWith(
+      fetch(req, { cache: 'no-store' })
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_VERSION).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.open(CACHE_VERSION).then((c) => c.match(req, { ignoreSearch: true })))
+    );
+    return;
+  }
+
+  /* Everything else: stale-while-revalidate — instant load, silent refresh. */
   event.respondWith(
     caches.open(CACHE_VERSION).then(async (cache) => {
       const cached = await cache.match(req, { ignoreSearch: true });

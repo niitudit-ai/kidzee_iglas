@@ -84,6 +84,12 @@
                 aria-haspopup="true" aria-expanded="false" aria-label="More options" title="More">⋮</button>
 
         <div class="menu__panel" id="menuPanel" role="menu" hidden>
+          <div class="menu__label">Sabko dikhaayein</div>
+          <button type="button" role="menuitem" data-act="publish" data-admin>📢 <span>Publish — sabko dikhaayein</span></button>
+          <button type="button" role="menuitem" data-act="sync">🔄 <span>Refresh — nayi calendar laayein</span></button>
+          <button type="button" role="menuitem" data-act="history">🕘 <span>Kaun kab badla (GitHub)</span></button>
+
+          <div class="menu__sep"></div>
           <div class="menu__label">Calendar</div>
           <button type="button" role="menuitem" data-act="print">🖨️ <span>Print / save as PDF</span></button>
           <button type="button" role="menuitem" data-act="ics">📅 <span>Export to Google Calendar (.ics)</span></button>
@@ -111,6 +117,9 @@
     <h1 id="printTitle">E-Calendar</h1>
     <p id="printSub"></p>
   </div>
+
+  <!-- shared-data status: last update for everyone, publish reminder for admin -->
+  <div class="syncbar" id="syncBar" role="status" aria-live="polite" hidden></div>
 
   <div class="toolbar">
     <div class="seg" role="tablist" aria-label="Calendar view">
@@ -243,7 +252,8 @@
     Shortcuts: <kbd>←</kbd> <kbd>→</kbd> month · <kbd>T</kbd> today · <kbd>N</kbd> new event
     · <kbd>/</kbd> search · <kbd>M</kbd> <kbd>A</kbd> <kbd>Y</kbd> views · <kbd>Esc</kbd> close
   </p>
-  <p class="muted">E-Calendar · data is saved in this browser · take a backup regularly</p>
+  <p class="muted">E-Calendar · calendar GitHub par save hoti hai, isliye sabko ek hi dikhti hai
+    · admin badlaav karke <b>Publish</b> kare, tabhi doosron tak pahunchta hai</p>
 </footer>
 
 <!-- ============================ DAY DRAWER ============================== -->
@@ -373,6 +383,89 @@
       <span class="spacer"></span>
       <button class="btn" type="button" data-close-board>Cancel</button>
       <button class="btn btn--primary" type="submit" form="boardForm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================== PUBLISH MODAL ============================ -->
+<div class="scrim" id="pubScrim" hidden></div>
+
+<div class="modal" id="pubModal" role="dialog" aria-modal="true" aria-labelledby="pubTitle" hidden>
+  <div class="modal__card modal__card--wide">
+    <div class="modal__head">
+      <h2 id="pubTitle">📢 Sabko dikhaayein</h2>
+      <button class="btn btn--icon btn--ghost" type="button" data-close-pub aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal__body">
+      <p class="pubintro">
+        Aapke badlaav abhi sirf aapke browser mein hain. Neeche ke 3 step karne se
+        calendar <b>GitHub par save ho jaayegi</b> aur phir jo bhi link kholega,
+        usko wahi dikhega.
+      </p>
+
+      <div class="pubalert" id="pubConflict" hidden>
+        ⚠️ <b>Dhyan dein:</b> is beech kisi aur ne nayi calendar publish ki hai.
+        Aap publish karenge to unke badlaav hat sakte hain. Pehle
+        <b>🔄 Refresh</b> dekh lena behtar hai.
+      </div>
+
+      <div class="pubsummary" id="pubSummary"></div>
+
+      <div class="field">
+        <label for="pubName">Aapka naam (optional — sabko dikhega ki kisne update kiya)</label>
+        <input id="pubName" type="text" maxlength="40" placeholder="jaise: Himanshu Sir">
+      </div>
+
+      <ol class="steps">
+        <li>
+          <b>JSON copy karein</b>
+          <div class="steps__act">
+            <button class="btn btn--primary btn--sm" type="button" id="pubCopyBtn">📋 Copy karein</button>
+            <span class="steps__state" id="pubCopyState"></span>
+          </div>
+        </li>
+
+        <li>
+          <b>GitHub par file kholein aur paste karein</b>
+          <p>Link khulega → andar ka purana text <kbd>Ctrl</kbd>+<kbd>A</kbd> se select karein →
+             <kbd>Ctrl</kbd>+<kbd>V</kbd> se paste karein → neeche <b>“Commit changes”</b> ka
+             hara button dabaayein.</p>
+          <div class="steps__act">
+            <a class="btn btn--sm" id="pubEditLink" href="#" target="_blank" rel="noopener">🔗 GitHub par kholein</a>
+          </div>
+          <details class="steps__alt">
+            <summary>Paste karna mushkil lag raha hai? File upload kar dein</summary>
+            <p>File download karke GitHub ke upload page par drag-drop kar dein —
+               wo purani file ko apne aap badal degi. Naam <code>calendar.json</code> hi rehne dein.</p>
+            <div class="steps__act">
+              <button class="btn btn--sm" type="button" id="pubDownloadBtn">⬇️ File download karein</button>
+              <a class="btn btn--sm" id="pubUploadLink" href="#" target="_blank" rel="noopener">🔗 Upload page kholein</a>
+            </div>
+          </details>
+        </li>
+
+        <li>
+          <b>Wapas aakar check karein</b>
+          <p>Commit ke baad GitHub ko 1–2 minute lagte hain. Phir ye button dabaayein —
+             hum khud dekh lenge ki sabko naya calendar pahunch gaya ya nahi.</p>
+          <div class="steps__act">
+            <button class="btn btn--primary btn--sm" type="button" id="pubVerifyBtn">✅ Ho gaya, check karein</button>
+          </div>
+        </li>
+      </ol>
+
+      <details class="steps__alt">
+        <summary>Jo JSON paste karna hai wo dekhna hai?</summary>
+        <textarea id="pubJSON" class="pubjson" readonly spellcheck="false" aria-label="Calendar JSON"></textarea>
+      </details>
+    </div>
+
+    <div class="modal__foot">
+      <button class="btn btn--danger" type="button" id="pubDiscardBtn"
+              title="Apne badlaav hata kar live calendar le aayein">Mere badlaav hata dein</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" data-close-pub>Baad mein</button>
     </div>
   </div>
 </div>
