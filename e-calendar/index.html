@@ -81,7 +81,8 @@
 
       <div class="menu">
         <button class="btn btn--icon" type="button" id="menuBtn"
-                aria-haspopup="true" aria-expanded="false" aria-label="More options" title="More">⋮</button>
+                aria-haspopup="true" aria-expanded="false" aria-label="More options" title="More">⋮<span
+                class="dot" id="menuDot" hidden></span></button>
 
         <div class="menu__panel" id="menuPanel" role="menu" hidden>
           <div class="menu__label">Sabko dikhaayein</div>
@@ -428,9 +429,14 @@
 
         <li>
           <b>GitHub par file kholein aur paste karein</b>
-          <p>Link khulega → andar ka purana text <kbd>Ctrl</kbd>+<kbd>A</kbd> se select karein →
-             <kbd>Ctrl</kbd>+<kbd>V</kbd> se paste karein → neeche <b>“Commit changes”</b> ka
-             hara button dabaayein.</p>
+          <p id="pubStepDesktop">Link khulega → andar ka purana text <kbd>Ctrl</kbd>+<kbd>A</kbd> se
+             select karein → <kbd>Ctrl</kbd>+<kbd>V</kbd> se paste karein → neeche
+             <b>“Commit changes”</b> ka hara button dabaayein.</p>
+          <p id="pubStepPhone" hidden>Link khulega → text par <b>der tak ungli dabaayein</b> (long press)
+             → <b>“Select all”</b> chuniye → phir <b>“Paste”</b> dabaayein → neeche tak scroll karke
+             hara <b>“Commit changes”</b> button dabaayein.<br>
+             <b>Phone par ye thoda mushkil hai.</b> Ho sake to laptop se publish karein, ya neeche
+             wala “file upload” tareeka use karein.</p>
           <div class="steps__act">
             <a class="btn btn--sm" id="pubEditLink" href="#" target="_blank" rel="noopener">🔗 GitHub par kholein</a>
           </div>
@@ -493,6 +499,20 @@
       <span class="spacer"></span>
       <button class="btn btn--primary" type="button" data-close-help>Got it</button>
     </div>
+  </div>
+</div>
+
+<!-- ===================== UNPUBLISHED-CHANGES DOCK =======================
+     Fixed to the bottom so it cannot scroll out of sight. An admin should never
+     be able to walk away thinking a change went out when it did not. -->
+<div class="pubdock" id="pubDock" role="region" aria-label="Unpublished changes" hidden>
+  <div class="pubdock__in">
+    <span class="pubdock__icon" aria-hidden="true">📢</span>
+    <span class="pubdock__txt">
+      <b>Ye badlaav sirf aapko dikh rahe hain</b>
+      <small id="pubDockCount"></small>
+    </span>
+    <button class="btn btn--primary" type="button" id="pubDockBtn">Sabko dikhaayein</button>
   </div>
 </div>
 

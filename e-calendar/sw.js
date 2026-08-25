@@ -1,7 +1,7 @@
 /* E-Calendar service worker — offline app shell.
    Bump CACHE_VERSION whenever index.html / app.css / app.js change,
    otherwise returning visitors keep the old cached copy. */
-const CACHE_VERSION = 'ecal-v2.1.0';
+const CACHE_VERSION = 'ecal-v2.2.0';
 
 /* The shared calendar must NEVER be served from cache first — a stale copy here
    means somebody misses a change that was already published. */

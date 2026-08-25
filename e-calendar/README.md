@@ -99,8 +99,15 @@ Lekin ek baat samajhna zaroori hai:
 > Admin jab event add/edit/delete karta hai, wo pehle **sirf uske browser mein** hota hai.
 > Jab tak **Publish** nahi karega, kisi aur ko nahi dikhega.
 
-App khud yaad dila deti hai — upar ek **peeli patti** aa jaati hai:
-*"📢 Publish karna baaki hai — aapke badlaav abhi sirf aapko dikh rahe hain."*
+App aapko bhoolne nahi degi. Jab tak publish nahi hota, **4 jagah** yaad dilaya jaata hai:
+
+- Screen ke **sabse neeche ek narangi patti chipki rehti hai** —
+  *"📢 Ye badlaav sirf aapko dikh rahe hain · 2 events publish karna baaki hai"*.
+  Ye scroll karne par bhi nahi hatti, isliye nazar se nahi chhootegi.
+- Page ke upar bhi ek patti aati hai.
+- ⋮ button par **laal bindi** lag jaati hai.
+- Har event save karne par likha aata hai *"abhi sirf aapko dikh raha hai, Publish karein"*.
+- Aur agar aap bina publish kiye **Lock & sign out** karenge, to app pehle poochhegi.
 
 ### Publish kaise karein (3 step, 1 minute)
 
@@ -118,6 +125,17 @@ GitHub ko commit ke baad **1–2 minute** lagte hain. Agar pehli baar mein
 > Paste karna mushkil lage to step 2 mein **"File upload kar dein"** khol lein —
 > file download karke GitHub ke upload page par drag-drop kar dein. Naam
 > `calendar.json` hi rehne dein.
+
+### 📱 Phone se publish karna
+
+Ho jaata hai, par thoda mushkil hai — phone par `Ctrl+A` nahi hota. App phone
+par khud alag tareeka dikhati hai: text par **der tak ungli dabaayein** →
+**"Select all"** → **"Paste"**.
+
+**Sabse aaram ka tareeka:** events phone se hi add kar lein (wo browser mein
+safe pade rehte hain, gum nahi honge), aur **publish laptop se** kar dein.
+Narangi patti tab tak dikhti rahegi jab tak publish na ho, to bhoolne ka
+darr nahi hai.
 
 ### Baaki logon ko naya calendar kaise milega
 

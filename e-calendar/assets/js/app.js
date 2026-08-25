@@ -641,6 +641,18 @@
   }
 
   function signOut() {
+    // Signing out does not lose the draft, but people assume "sign out" means
+    // "saved and sent". Say plainly that it has not gone out yet.
+    if (isAdmin() && !state.offline && hasUnpublished()) {
+      const label = unpublishedLabel();
+      const ok = window.confirm(
+        'Dhyan dein: ' + (label ? label + ' ' : '') + 'publish nahi hue hain.\n\n' +
+        'Ye aapke browser mein safe hain, gum nahi honge — par jab tak Publish nahi karenge, ' +
+        'kisi aur ko nahi dikhenge.\n\n' +
+        'Phir bhi sign out karna hai?');
+      if (!ok) return;
+    }
+
     state.role = null;
     try { sessionStorage.removeItem(KEYS.role); } catch (err) { /* ignore */ }
 
@@ -650,6 +662,9 @@
     closeMenu();
 
     document.body.classList.add('is-locked');
+    document.body.classList.remove('has-dock');
+    $('pubDock').hidden = true;
+    $('menuDot').hidden = true;
     $('lock').hidden = false;
     $('hdr').hidden = true;
     $('app').hidden = true;
@@ -1321,10 +1336,10 @@
       const ev = state.events.find((e) => e.id === editingId);
       if (!ev) { toast('Event mil nahi raha.', 'err'); return; }
       Object.assign(ev, normaliseEvent(Object.assign({}, ev, patch)));
-      toast('Event update ho gaya ✓', 'ok');
+      toast('Event update ho gaya ✓ — abhi sirf aapko dikh raha hai, Publish karein.', 'ok');
     } else {
       state.events.push(normaliseEvent(Object.assign({ id: uid() }, patch)));
-      toast('Event add ho gaya ✓', 'ok');
+      toast('Event add ho gaya ✓ — abhi sirf aapko dikh raha hai, Publish karein.', 'ok');
     }
 
     saveEvents();
@@ -1348,7 +1363,7 @@
 
     saveEvents();
     closeEventModal();
-    toast('Event delete ho gaya.', 'ok');
+    toast('Event delete ho gaya — doosron ke paas tab tak rahega jab tak Publish na karein.', 'ok');
     renderAll();
     refreshDrawer();
   }
@@ -1406,10 +1421,10 @@
       const item = state.board.find((b) => b.id === editingBoardId);
       if (!item) { toast('Item mil nahi raha.', 'err'); return; }
       Object.assign(item, normaliseBoardItem(Object.assign({}, item, patch)));
-      toast('Board theme update ho gaya ✓', 'ok');
+      toast('Board theme update ho gaya ✓ — Publish karne par sabko dikhega.', 'ok');
     } else {
       state.board.push(normaliseBoardItem(Object.assign({ id: uid() }, patch)));
-      toast('Board theme add ho gaya ✓', 'ok');
+      toast('Board theme add ho gaya ✓ — Publish karne par sabko dikhega.', 'ok');
     }
 
     saveBoard();
@@ -1429,7 +1444,7 @@
     state.board = state.board.filter((b) => b.id !== id);
     saveBoard();
     closeBoardModal();
-    toast('Board theme delete ho gaya.', 'ok');
+    toast('Board theme delete ho gaya — Publish karne par sabko dikhega.', 'ok');
     renderBoard();
     renderSidebar();
     renderSyncBar();
@@ -1599,6 +1614,14 @@
       box.appendChild(el('div', { class: 'pubrow' }, el('span', { text: 'Chhote-mote badlaav.' })));
     }
 
+    /* Ctrl+A / Ctrl+V is meaningless on a phone. Require BOTH touch and a narrow
+       screen: a touch-screen laptop still has a keyboard, so it gets the
+       desktop steps. */
+    const onPhone = (navigator.maxTouchPoints || 0) > 0 &&
+      window.matchMedia('(max-width: 900px)').matches;
+    $('pubStepDesktop').hidden = onPhone;
+    $('pubStepPhone').hidden = !onPhone;
+
     $('pubConflict').hidden = !state.conflict;
     $('pubEditLink').href = GH.edit;
     $('pubUploadLink').href = GH.upload;
@@ -1684,8 +1707,43 @@
       ', ' + d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
   }
 
+  /* Plain-language count of what is sitting unpublished, e.g. "2 events". */
+  function unpublishedLabel() {
+    const d = diffSummary();
+    if (!d) return '';
+
+    const bits = [];
+    const ev = d.events.added + d.events.changed + d.events.removed;
+    const bd = d.board.added + d.board.changed + d.board.removed;
+    if (ev) bits.push(ev + ' event' + (ev === 1 ? '' : 's'));
+    if (bd) bits.push(bd + ' board theme' + (bd === 1 ? '' : 's'));
+    return bits.join(' + ');
+  }
+
+  /* The bottom dock and the dot on the ⋮ button. The inline bar sits at the top
+     of the page and scrolls away, which is exactly how an admin ends up adding
+     events and never realising they were never published. */
+  function renderPublishDock() {
+    const dock = $('pubDock');
+    const dot = $('menuDot');
+    if (!dock) return;
+
+    const show = !!state.role && isAdmin() && !state.offline && hasUnpublished();
+
+    dock.hidden = !show;
+    if (dot) dot.hidden = !show;
+    document.body.classList.toggle('has-dock', show);
+
+    if (show) {
+      const label = unpublishedLabel();
+      $('pubDockCount').textContent = (label ? label + ' publish karna baaki hai' : 'Publish karna baaki hai') +
+        ' — tab tak kisi aur ko nahi dikhega';
+    }
+  }
+
   function renderSyncBar() {
     const bar = $('syncBar');
+    renderPublishDock();
     if (!bar) return;
     bar.innerHTML = '';
     bar.className = 'syncbar';
@@ -2072,6 +2130,7 @@
       download('calendar.json', buildPublishJSON(rememberPubName()), 'application/json');
       toast('calendar.json download ho gayi ✓', 'ok');
     });
+    $('pubDockBtn').addEventListener('click', openPublishModal);
     $('pubVerifyBtn').addEventListener('click', verifyPublished);
     $('pubDiscardBtn').addEventListener('click', discardDraft);
 
