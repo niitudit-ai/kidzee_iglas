@@ -3,6 +3,10 @@
 Password-protected school calendar. Important dates, festivals, awareness days
 aur har month ke House / Class board themes — sab ek jagah.
 
+**Sabko ek hi calendar dikhti hai** — data GitHub par rehta hai, koi database ya
+monthly kharcha nahi. Admin badlaav karke **Publish** dabaata hai, baaki sab ko
+apne aap pahunch jaata hai.
+
 **Live:** https://niitudit-ai.github.io/kidzee_iglas/e-calendar/
 
 > Ye project apni alag `e-calendar/` folder mein hai. Repo ke baaki projects
@@ -70,6 +74,8 @@ details, phone numbers waghairah nahi. School ke events ke liye ye bilkul theek 
 - Admin theme/activity add, **edit** aur delete kar sakta hai
 
 **Aur bhi**
+- 📢 **Sabko ek hi calendar** — data GitHub par rehta hai, Publish karne se sab tak pahunch jaata hai
+- 🔄 Patti par dikhta hai ki **last update kab aur kisne** kiya
 - 🌙 **Dark mode**
 - 🏠 House (neela) / 🎓 Class (baingani) — do theme
 - 📱 Mobile par poora chalta hai; chhoti screen par calendar rang ke dots dikhata hai, tap karo to details
@@ -81,20 +87,70 @@ details, phone numbers waghairah nahi. School ke events ke liye ye bilkul theek 
 
 ---
 
-## ⚠️ Data kahan save hota hai (ye zaroor padhein)
+## 📢 Sabko dikhane ke liye — Publish (ye zaroor padhein)
 
-Events aapke **usi browser** mein save hote hain (localStorage), kisi server par nahi.
-Iska matlab:
+Calendar ka asli data **GitHub par ek file mein** rehta hai:
+[`e-calendar/data/calendar.json`](data/calendar.json)
 
-- Aap laptop par event add karenge to **mobile par wo nahi dikhega**.
-- Browser ka data / history clear kar diya to **events chale jaayenge**.
-- Kisi aur ko bhejna hai to: **⋮ menu → Download backup (.json)**, wo file bhejein,
-  saamne wale ke browser mein **⋮ → Restore from backup**.
+Jo bhi link kholta hai, wo yahi file padhta hai. Isliye **sabko ek hi calendar dikhti hai.**
 
-Isliye **mahine mein ek baar backup download kar lijiye.** Bas 2 second ka kaam hai.
+Lekin ek baat samajhna zaroori hai:
 
-Agar aage chal kar sabko ek hi calendar chahiye (sab devices par same data), to
-uske liye server ya Firebase/Supabase jaisa database lagega — tab batayein.
+> Admin jab event add/edit/delete karta hai, wo pehle **sirf uske browser mein** hota hai.
+> Jab tak **Publish** nahi karega, kisi aur ko nahi dikhega.
+
+App khud yaad dila deti hai — upar ek **peeli patti** aa jaati hai:
+*"📢 Publish karna baaki hai — aapke badlaav abhi sirf aapko dikh rahe hain."*
+
+### Publish kaise karein (3 step, 1 minute)
+
+1. Peeli patti par **📢 Sabko dikhaayein** dabaayein (ya ⋮ → Publish).
+   JSON apne aap copy ho jaata hai.
+2. **🔗 GitHub par kholein** dabaayein → nayi tab khulegi →
+   `Ctrl`+`A` (purana sab select) → `Ctrl`+`V` (paste) →
+   neeche hara **“Commit changes”** button dabaayein.
+3. Wapas calendar par aayein → **✅ Ho gaya, check karein** dabaayein.
+   App khud live file padhkar batayegi ki pahunch gaya ya nahi.
+
+GitHub ko commit ke baad **1–2 minute** lagte hain. Agar pehli baar mein
+"purana data hai" bole, to thoda ruk kar dobara check karein.
+
+> Paste karna mushkil lage to step 2 mein **"File upload kar dein"** khol lein —
+> file download karke GitHub ke upload page par drag-drop kar dein. Naam
+> `calendar.json` hi rehne dein.
+
+### Baaki logon ko naya calendar kaise milega
+
+Apne aap. Wo jab page kholenge ya refresh karenge, nayi file aa jaayegi.
+Bina page band kiye dekhna ho to **🔄 Refresh** dabaa lein.
+
+Patti par ye bhi likha rehta hai ki **last update kab hua aur kisne kiya** —
+Publish karte waqt apna naam daal dein, to sabko dikhega.
+
+### Do log ek hi waqt par badlein to?
+
+App pakad leti hai. Agar aapke bin-publish badlaav pade hain aur is beech kisi
+aur ne publish kar diya, to warning aati hai:
+*"⚠️ is beech kisi ne nayi calendar publish ki hai"* — tab
+**🔄 Refresh** dekh lein, ya **"Mere badlaav hata dein"** se live wali le lein.
+
+### Publish kaun kar sakta hai
+
+Jiske paas is GitHub repo ka access hai. **Password se koi GitHub par kuch nahi
+badal sakta** — jaan-boojh kar aisa banaya hai. Agar page mein GitHub ka token
+daal dete, to jo koi page ka source dekh leta wo poora calendar bigaad sakta tha.
+
+### Internet na ho to?
+
+Calendar khulti rahegi (jo aakhri baar dekha tha wo dikhega), par upar likha
+aayega *"⚠️ Offline"*. Us waqt Publish band rehta hai — warna aadha-adhoora
+data live chala jaata.
+
+### Backup
+
+Publish karte hi backup apne aap ban jaata hai, kyunki poori calendar GitHub
+par save hai aur wahan **history** bhi rehti hai (⋮ → *Kaun kab badla*).
+Alag file chahiye to ⋮ → **Download backup (.json)**.
 
 ---
 
@@ -131,6 +187,8 @@ e-calendar/
 ├── sw.js                       offline caching
 ├── robots.txt                  (dekhein neeche ka note)
 ├── .nojekyll
+├── data/
+│   └── calendar.json       🌟 SABKA data yahin hai — Publish isi ko badalta hai
 └── assets/
     ├── css/app.css             design system, dark mode, print layout
     ├── js/app.js               poora app logic + default events
@@ -168,6 +226,7 @@ Pehle poora calendar ek hi HTML file mein tha. Jo problems thin:
 | Time `14:30` aise dikhta tha | `2:30 PM` |
 | Koi favicon nahi | 📅 calendar favicon |
 | Search / filter / dark mode / print / backup / export kuch nahi tha | Sab hai |
+| **Data sirf ek browser mein rehta tha** — laptop par event daalo to mobile par kuch nahi dikhta tha | Data GitHub par ek shared file mein. **Publish karne se sabko dikhta hai** |
 
 **Purana data safe hai.** Pehli baar khulne par app aapke browser se purane events,
 board themes aur theme choice khud utha leta hai. Jo default events aapne delete kiye
