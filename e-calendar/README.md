@@ -3,9 +3,9 @@
 Password-protected school calendar. Important dates, festivals, awareness days
 aur har month ke House / Class board themes — sab ek jagah.
 
-**Sabko ek hi calendar dikhti hai** — data GitHub par rehta hai, koi database ya
-monthly kharcha nahi. Admin badlaav karke **Publish** dabaata hai, baaki sab ko
-apne aap pahunch jaata hai.
+**Sabko ek hi calendar dikhti hai, turant.** Admin jo badlaav kare wo apne aap
+har phone aur laptop par pahunch jaata hai — koi Publish, koi refresh nahi.
+Firebase ke free plan par chalta hai, kharcha zero.
 
 **Live:** https://niitudit-ai.github.io/kidzee_iglas/e-calendar/
 
@@ -74,7 +74,8 @@ details, phone numbers waghairah nahi. School ke events ke liye ye bilkul theek 
 - Admin theme/activity add, **edit** aur delete kar sakta hai
 
 **Aur bhi**
-- 📢 **Sabko ek hi calendar** — data GitHub par rehta hai, Publish karne se sab tak pahunch jaata hai
+- ⚡ **Live sync** — badlaav karte hi sabke calendar mein, bina refresh
+- 🔒 Admin password **Google ke server par** check hota hai, page mein nahi
 - 🔄 Patti par dikhta hai ki **last update kab aur kisne** kiya
 - 🌙 **Dark mode**
 - 🏠 House (neela) / 🎓 Class (baingani) — do theme
@@ -87,7 +88,52 @@ details, phone numbers waghairah nahi. School ke events ke liye ye bilkul theek 
 
 ---
 
-## 📢 Sabko dikhane ke liye — Publish (ye zaroor padhein)
+## ⚡ Ab sab apne aap hota hai (Firebase)
+
+Event add / edit / delete karte hi wo **turant sabke calendar mein** pahunch jaata
+hai. Koi Publish nahi, koi paste nahi. Doosre log page khole baithe hain to unki
+screen bhi **bina refresh** apne aap badal jaayegi.
+
+Upar patti par likha rehta hai: *"⚡ Live — har badlaav turant sabko dikhta hai"*
+aur saath mein last update kab aur kisne kiya.
+
+### Password ab kahan check hota hai
+
+Pehle password is page ke andar likha tha (hash karke), jise thoda technical
+banda nikaal sakta tha. **Ab wo Google ke server par check hota hai** —
+page mein kahin nahi hai. Ye pehle se kaafi behtar hai.
+
+Admin password badalna ho to Firebase console mein:
+**Authentication → Users → apne email ke aage ⋮ → Reset password**
+(ya user delete karke naya bana lein). Code mein kuch nahi badalna.
+
+### Settings kahan hain
+
+Sab kuch ek chhoti file mein: [`assets/js/firebase-config.js`](assets/js/firebase-config.js)
+— project ki 6 lines aur admin ka email. Bas.
+
+### Agar Firebase kabhi kaam na kare
+
+Calendar band nahi hogi. App khud purane tareeke (GitHub file + Publish) par
+chali jaayegi aur upar wajah likh degi — jaise *"Firebase load nahi hua"*.
+Us haalat mein purana password `ChangeMe@123` local editing ke liye kaam karta
+hai, lekin usse aap **doosron ka calendar nahi badal sakte** (uske liye GitHub
+ka access chahiye). Isliye ye khatre ki baat nahi hai.
+
+Firebase hamesha ke liye hatana ho to `firebase-config.js` mein
+`enabled: false` kar dein.
+
+### Kharcha
+
+Zero. Firebase ka **Spark (free)** plan school jitne istemaal ke liye kaafi zyada
+hai. Card lagane ki zaroorat nahi.
+
+---
+
+## 📢 Purana tareeka — Publish (ab sirf backup ke liye)
+
+> Ye hissa tabhi kaam aata hai jab Firebase band ho ya `enabled: false` ho.
+> Aam haalat mein aapko iski zaroorat nahi padegi.
 
 Calendar ka asli data **GitHub par ek file mein** rehta hai:
 [`e-calendar/data/calendar.json`](data/calendar.json)
@@ -206,10 +252,12 @@ e-calendar/
 ├── robots.txt                  (dekhein neeche ka note)
 ├── .nojekyll
 ├── data/
-│   └── calendar.json       🌟 SABKA data yahin hai — Publish isi ko badalta hai
+│   └── calendar.json       shuruaati events + backup (Firebase band ho to yahi chalta hai)
 └── assets/
     ├── css/app.css             design system, dark mode, print layout
     ├── js/app.js               poora app logic + default events
+    ├── js/firebase-config.js   🌟 SETTINGS — sirf yahi file badalni padti hai
+    ├── js/sync-firebase.js     cloud sync (live updates)
     └── img/
         ├── favicon.svg         📅 calendar icon (tab aur bookmark mein)
         └── icon-maskable.svg   Android home-screen icon
@@ -244,7 +292,8 @@ Pehle poora calendar ek hi HTML file mein tha. Jo problems thin:
 | Time `14:30` aise dikhta tha | `2:30 PM` |
 | Koi favicon nahi | 📅 calendar favicon |
 | Search / filter / dark mode / print / backup / export kuch nahi tha | Sab hai |
-| **Data sirf ek browser mein rehta tha** — laptop par event daalo to mobile par kuch nahi dikhta tha | Data GitHub par ek shared file mein. **Publish karne se sabko dikhta hai** |
+| **Data sirf ek browser mein rehta tha** — laptop par event daalo to mobile par kuch nahi dikhta tha | Firebase par. **Badlaav karte hi sabko turant dikhta hai** |
+| Password page ke source mein tha | Google ke server par check hota hai |
 
 **Purana data safe hai.** Pehli baar khulne par app aapke browser se purane events,
 board themes aur theme choice khud utha leta hai. Jo default events aapne delete kiye

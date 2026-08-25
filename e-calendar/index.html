@@ -519,6 +519,16 @@
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
 
+<!-- Firebase settings. Edit this one file to point at a different project,
+     or set enabled:false to go back to the manual Publish flow. -->
+<script src="assets/js/firebase-config.js"></script>
+
+<!-- Classic script: runs first and works with or without Firebase. -->
 <script src="assets/js/app.js"></script>
+
+<!-- ES module, so it is deferred and runs after app.js. It sets window.ECAL_SYNC
+     and app.js waits for it. If it fails to load, the calendar simply falls back
+     to the published GitHub file. -->
+<script type="module" src="assets/js/sync-firebase.js"></script>
 </body>
 </html>

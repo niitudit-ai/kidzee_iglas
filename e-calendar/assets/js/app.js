@@ -333,7 +333,15 @@
     published: null,            // the shared file, once fetched
     offline: false,             // shared file could not be reached
     conflict: false,            // somebody else published after our draft began
-    hasLocal: false             // this browser already had saved data
+    hasLocal: false,            // this browser already had saved data
+    mode: 'file',               // 'live' = Firebase, 'file' = GitHub json + publish
+    syncReason: '',             // why live mode is unavailable, if it is
+    cloud: null,                // { updatedAt, updatedBy } from the cloud doc
+    cloudEmpty: false,          // cloud document does not exist yet
+    pendingWrite: false,        // a save is in flight
+    unsent: false,              // a save failed and is waiting to be retried
+    writeError: null,
+    seeding: false
   };
 
   function normaliseEvent(raw) {
@@ -444,6 +452,12 @@
     return p ? signature(p.events, p.board, p.hidden) : null;
   }
 
+  /* Local copy differs from the cloud snapshot we last applied. */
+  function hasUnsentLocal() {
+    if (!state.cloudSig) return false;
+    return state.cloudSig !== localSignature();
+  }
+
   /* true when the admin has edits that nobody else can see yet */
   function hasUnpublished() {
     const pub = publishedSignature();
@@ -467,6 +481,23 @@
   /* Decide what this person actually sees. Called after login, because the
      answer depends on whether they are the admin. */
   function resolveWorkingSet() {
+    if (state.mode === 'live') {
+      state.offline = false;
+
+      if (state.cloudEmpty) {        // nothing in the cloud yet
+        seedCloudIfAdmin();
+        if (!isAdmin() && state.published) adoptPublished();
+        return;
+      }
+
+      /* Local edits made before Firebase existed (or while offline) would be
+         silently wiped by the first snapshot, so offer to send them instead. */
+      if (isAdmin() && state.hasLocal && state.cloud && hasUnsentLocal()) {
+        state.unsent = true;
+      }
+      return;
+    }
+
     if (!state.published) {          // GitHub unreachable / opened from disk
       state.offline = true;
       mergeSeeds();
@@ -491,8 +522,124 @@
     state.conflict = !!(base && state.published.publishedAt && base !== state.published.publishedAt);
   }
 
+  /* == 4c · LIVE CLOUD SYNC ==============================================
+     In live mode there is no publishing. Every edit is written to one Firestore
+     document, and every device listening to that document redraws itself. The
+     published GitHub file stays around as the first-run seed and as the
+     read-only fallback when Firebase cannot be reached. */
+
+  function cloudPayload() {
+    return {
+      events: state.events.map(function (e) { return Object.assign({}, e); }),
+      board: state.board.map(function (b) { return Object.assign({}, b); }),
+      hidden: state.hidden.slice(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: (localStorage.getItem(KEYS.pubName) || '') ||
+                 (window.ECAL_SYNC && window.ECAL_SYNC.status.adminEmail) || ''
+    };
+  }
+
+  function applyCloud(data) {
+    state.cloud = {
+      updatedAt: String(data.updatedAt || ''),
+      updatedBy: String(data.updatedBy || '')
+    };
+    state.events = (Array.isArray(data.events) ? data.events : []).map(normaliseEvent);
+    state.board = (Array.isArray(data.board) ? data.board : []).map(normaliseBoardItem);
+    state.hidden = (Array.isArray(data.hidden) ? data.hidden : []).map(String);
+    // keep a local copy so the calendar still opens with no internet
+    saveEvents(); saveBoard(); saveHidden();
+    state.cloudSig = localSignature();
+  }
+
+  function listenToCloud() {
+    window.ECAL_SYNC.subscribe(function (data) {
+      if (!data) {
+        // the document does not exist yet — very first run
+        state.cloudEmpty = true;
+        if (state.role) seedCloudIfAdmin();
+        return;
+      }
+
+      state.cloudEmpty = false;
+
+      /* Ignore the echo of our own write, otherwise a burst of quick edits can
+         be clobbered by an older snapshot still in flight. */
+      if (state.pendingWrite) return;
+
+      applyCloud(data);
+      if (state.role) { renderAll(); refreshDrawer(); }
+    });
+  }
+
+  /* First run: lift the 55 published events into the cloud so everybody starts
+     from the same place. Only an admin is allowed to write, so viewers just read
+     the GitHub file until an admin logs in once. */
+  function seedCloudIfAdmin() {
+    if (!isAdmin() || state.seeding) return;
+    state.seeding = true;
+
+    if (state.published && !state.hasLocal) {
+      state.events = state.published.events.map(function (e) { return Object.assign({}, e); });
+      state.board = state.published.board.map(function (b) { return Object.assign({}, b); });
+      state.hidden = state.published.hidden.slice();
+    }
+
+    pushToCloud().then(function (res) {
+      state.seeding = false;
+      if (res.ok) {
+        toast('Calendar cloud par ban gayi ✓ Ab har badlaav sabko turant dikhega.', 'ok');
+        renderAll();
+      }
+    });
+  }
+
+  /* The whole point: save, and it is everywhere. */
+  function pushToCloud() {
+    if (state.mode !== 'live') return Promise.resolve({ ok: false, reason: 'file-mode' });
+
+    state.pendingWrite = true;
+    state.writeError = null;
+    renderSyncBar();
+
+    return window.ECAL_SYNC.write(cloudPayload()).then(function (res) {
+      state.pendingWrite = false;
+
+      if (res.ok) {
+        state.unsent = false;
+        state.cloudSig = localSignature();
+        state.cloud = { updatedAt: new Date().toISOString(), updatedBy: cloudPayload().updatedBy };
+      } else {
+        // the edit is safe locally; tell them plainly it has not gone out
+        state.unsent = true;
+        state.writeError = res.reason;
+        toast(res.reason === 'not-allowed'
+          ? 'Save nahi hua — is email ko badalne ki ijaazat nahi (Rules check karein).'
+          : 'Save nahi hua (internet?). Neeche “Dobara bhejein” dabaayein.', 'err');
+      }
+
+      renderSyncBar();
+      return res;
+    });
+  }
+
+  /* Called after every change. In live mode it syncs; in file mode the old
+     publish flow takes over. */
+  function afterChange() {
+    if (state.mode === 'live') pushToCloud();
+  }
+
   /* Re-read the shared file and apply it if we have nothing of our own. */
   function checkForUpdates(announce) {
+    if (state.mode === 'live') {
+      // live mode is already listening; nothing to fetch
+      if (announce) {
+        toast(state.unsent
+          ? 'Kuch badlaav bheje nahi ja sake — “Dobara bhejein” dabaayein.'
+          : 'Calendar live hai — sab apne aap update hota hai ✓', state.unsent ? 'err' : 'ok');
+      }
+      return Promise.resolve(false);
+    }
     return fetchPublished().then((pub) => {
       if (!pub) {
         if (announce) toast('Shared calendar padhi nahi ja saki. Internet dekh lein.', 'err');
@@ -594,6 +741,18 @@
       return;
     }
 
+    /* Admin, with Firebase working: the password goes to Google and is checked
+       there. Nothing in this page can be inspected to get past it, and only a
+       real sign-in earns permission to change the calendar. */
+    if (role === 'admin' && state.mode === 'live') {
+      msg.textContent = 'Check kar rahe hain…';
+      attemptFirebaseAdmin(value, input, msg);
+      return;
+    }
+
+    /* Viewer is only a courtesy gate — reads are public anyway — so the old
+       local hash check is honest enough for it. Same for admin when Firebase
+       is switched off entirely. */
     const digest = sha256Hex(AUTH.salt + value);
     const expected = role === 'admin' ? AUTH.admin : AUTH.viewer;
 
@@ -612,6 +771,37 @@
     msg.textContent = '';
     input.value = '';
     signIn(role);
+  }
+
+  const AUTH_MESSAGES = {
+    'wrong-password': 'Galat password. Dobara koshish kijiye.',
+    'no-such-user': 'Ye email Firebase mein nahi mila. Authentication → Users mein user banaya hai?',
+    'too-many-tries': 'Bahut baar galat password. Kuch minute ruk kar koshish karein.',
+    'no-network': 'Internet nahi mil raha. Admin login ke liye internet zaroori hai.',
+    'bad-api-key': 'Firebase ki API key galat lag rahi hai — firebase-config.js check karein.',
+    'email-login-off': 'Firebase mein Email/Password login chalu nahi hai.',
+    'sdk-load-failed': 'Firebase load nahi hua (internet ya ad-blocker). ',
+    'not-configured': 'Firebase set nahi hai.'
+  };
+
+  function attemptFirebaseAdmin(password, input, msg) {
+    window.ECAL_SYNC.signInAdmin(password).then(function (res) {
+      if (res.ok) {
+        msg.textContent = '';
+        input.value = '';
+        signIn('admin');
+        return;
+      }
+
+      msg.textContent = AUTH_MESSAGES[res.reason] || ('Login nahi ho paaya (' + res.reason + ').');
+      shakeCard();
+      input.select();
+
+      // a wrong password is normal; anything else is worth recording
+      if (res.reason !== 'wrong-password') {
+        state.lastAuthProblem = res.code || res.reason;
+      }
+    });
   }
 
   function shakeCard() {
@@ -635,6 +825,7 @@
 
     // the shared file decides what is shown, and that depends on the role
     sharedReady.then(function () {
+      applyRole();                 // the mode is known now, so re-apply menus
       resolveWorkingSet();
       renderAll();
     });
@@ -643,7 +834,11 @@
   function signOut() {
     // Signing out does not lose the draft, but people assume "sign out" means
     // "saved and sent". Say plainly that it has not gone out yet.
-    if (isAdmin() && !state.offline && hasUnpublished()) {
+    if (state.mode === 'live' && state.unsent) {
+      if (!window.confirm('Ek badlaav abhi bheja nahi ja saka hai.\n\n' +
+        'Wo aapke browser mein safe hai, par jab tak bhej nahi jaata kisi aur ko nahi dikhega.\n\n' +
+        'Phir bhi sign out karna hai?')) return;
+    } else if (state.mode === 'file' && isAdmin() && !state.offline && hasUnpublished()) {
       const label = unpublishedLabel();
       const ok = window.confirm(
         'Dhyan dein: ' + (label ? label + ' ' : '') + 'publish nahi hue hain.\n\n' +
@@ -655,6 +850,7 @@
 
     state.role = null;
     try { sessionStorage.removeItem(KEYS.role); } catch (err) { /* ignore */ }
+    if (window.ECAL_SYNC) window.ECAL_SYNC.signOutAdmin();
 
     closeDrawer();
     closeEventModal();
@@ -685,6 +881,13 @@
     $('addBtn').hidden = !admin;
     $('boardAddBtn').hidden = !admin;
     $$('#menuPanel [data-admin]').forEach((b) => { b.hidden = !admin; });
+
+    // live mode publishes by itself, so hide the manual flow entirely
+    const live = state.mode === 'live';
+    const pubItem = document.querySelector('#menuPanel [data-act="publish"]');
+    const histItem = document.querySelector('#menuPanel [data-act="history"]');
+    if (pubItem) pubItem.hidden = !admin || live;
+    if (histItem) histItem.hidden = live;
   }
 
   /* == 6 · OCCURRENCE ENGINE ============================================== */
@@ -1336,13 +1539,14 @@
       const ev = state.events.find((e) => e.id === editingId);
       if (!ev) { toast('Event mil nahi raha.', 'err'); return; }
       Object.assign(ev, normaliseEvent(Object.assign({}, ev, patch)));
-      toast('Event update ho gaya ✓ — abhi sirf aapko dikh raha hai, Publish karein.', 'ok');
+      toast(state.mode === 'live' ? 'Event update ho gaya ✓ sabko dikh raha hai' : 'Event update ho gaya ✓ — abhi sirf aapko dikh raha hai, Publish karein.', 'ok');
     } else {
       state.events.push(normaliseEvent(Object.assign({ id: uid() }, patch)));
-      toast('Event add ho gaya ✓ — abhi sirf aapko dikh raha hai, Publish karein.', 'ok');
+      toast(state.mode === 'live' ? 'Event add ho gaya ✓ sabko dikh raha hai' : 'Event add ho gaya ✓ — abhi sirf aapko dikh raha hai, Publish karein.', 'ok');
     }
 
     saveEvents();
+    afterChange();
     closeEventModal();
 
     const d = parseISO(date);
@@ -1362,8 +1566,9 @@
     if (ev.seed && state.hidden.indexOf(id) === -1) { state.hidden.push(id); saveHidden(); }
 
     saveEvents();
+    afterChange();
     closeEventModal();
-    toast('Event delete ho gaya — doosron ke paas tab tak rahega jab tak Publish na karein.', 'ok');
+    toast(state.mode === 'live' ? 'Event delete ho gaya ✓ sabke calendar se hat gaya' : 'Event delete ho gaya — doosron ke paas tab tak rahega jab tak Publish na karein.', 'ok');
     renderAll();
     refreshDrawer();
   }
@@ -1421,13 +1626,14 @@
       const item = state.board.find((b) => b.id === editingBoardId);
       if (!item) { toast('Item mil nahi raha.', 'err'); return; }
       Object.assign(item, normaliseBoardItem(Object.assign({}, item, patch)));
-      toast('Board theme update ho gaya ✓ — Publish karne par sabko dikhega.', 'ok');
+      toast(state.mode === 'live' ? 'Board theme update ho gaya ✓ sabko dikh raha hai' : 'Board theme update ho gaya ✓ — Publish karne par sabko dikhega.', 'ok');
     } else {
       state.board.push(normaliseBoardItem(Object.assign({ id: uid() }, patch)));
-      toast('Board theme add ho gaya ✓ — Publish karne par sabko dikhega.', 'ok');
+      toast(state.mode === 'live' ? 'Board theme add ho gaya ✓ sabko dikh raha hai' : 'Board theme add ho gaya ✓ — Publish karne par sabko dikhega.', 'ok');
     }
 
     saveBoard();
+    afterChange();
     closeBoardModal();
 
     const p = month.split('-');
@@ -1443,8 +1649,9 @@
 
     state.board = state.board.filter((b) => b.id !== id);
     saveBoard();
+    afterChange();
     closeBoardModal();
-    toast('Board theme delete ho gaya — Publish karne par sabko dikhega.', 'ok');
+    toast(state.mode === 'live' ? 'Board theme delete ho gaya ✓ sabke calendar se hat gaya' : 'Board theme delete ho gaya — Publish karne par sabko dikhega.', 'ok');
     renderBoard();
     renderSidebar();
     renderSyncBar();
@@ -1499,6 +1706,7 @@
       state.hidden = Array.isArray(data.hidden) ? data.hidden.map(String) : [];
 
       saveEvents(); saveBoard(); saveHidden();
+      afterChange();
       toast('Restore ho gaya ✓ ' + state.events.length + ' events. Sabko dikhane ke liye Publish karein.', 'ok');
       renderAll();
       refreshDrawer();
@@ -1728,16 +1936,29 @@
     const dot = $('menuDot');
     if (!dock) return;
 
-    const show = !!state.role && isAdmin() && !state.offline && hasUnpublished();
+    /* Live mode: the dock is only for a save that did not make it out.
+       File mode: it is the publish reminder. */
+    const show = !!state.role && isAdmin() &&
+      (state.mode === 'live' ? state.unsent : (!state.offline && hasUnpublished()));
 
     dock.hidden = !show;
     if (dot) dot.hidden = !show;
     document.body.classList.toggle('has-dock', show);
 
-    if (show) {
+    if (!show) return;
+
+    if (state.mode === 'live') {
+      dock.querySelector('.pubdock__txt b').textContent = 'Ye badlaav bheja nahi ja saka';
+      $('pubDockCount').textContent = state.writeError === 'not-allowed'
+        ? 'Is email ko calendar badalne ki ijaazat nahi — Firestore Rules check karein'
+        : 'Aapke phone mein safe hai. Internet aane par dobara bhejein.';
+      $('pubDockBtn').textContent = 'Dobara bhejein';
+    } else {
       const label = unpublishedLabel();
+      dock.querySelector('.pubdock__txt b').textContent = 'Ye badlaav sirf aapko dikh rahe hain';
       $('pubDockCount').textContent = (label ? label + ' publish karna baaki hai' : 'Publish karna baaki hai') +
         ' — tab tak kisi aur ko nahi dikhega';
+      $('pubDockBtn').textContent = 'Sabko dikhaayein';
     }
   }
 
@@ -1747,6 +1968,55 @@
     if (!bar) return;
     bar.innerHTML = '';
     bar.className = 'syncbar';
+
+    /* ---- live mode: no publishing, so just report the truth ---- */
+    if (state.mode === 'live') {
+      if (state.pendingWrite) {
+        bar.classList.add('syncbar--ok');
+        bar.appendChild(el('span', { class: 'syncbar__txt' },
+          el('b', { text: '⏳ Bhej rahe hain…' })));
+        bar.hidden = false;
+        return;
+      }
+
+      if (state.unsent) {
+        bar.classList.add('syncbar--warn');
+        bar.appendChild(el('span', { class: 'syncbar__txt' },
+          el('b', { text: '⚠️ Badlaav bheja nahi ja saka — ' }),
+          'aapke browser mein safe hai. Neeche “Dobara bhejein” dabaayein.'
+        ));
+        bar.appendChild(el('div', { class: 'syncbar__act' },
+          el('button', { class: 'btn btn--primary btn--sm', type: 'button', onclick: pushToCloud },
+            'Dobara bhejein')
+        ));
+        bar.hidden = false;
+        return;
+      }
+
+      bar.classList.add('syncbar--ok');
+      bar.appendChild(el('span', { class: 'syncbar__txt' },
+        el('b', { text: '⚡ Live — har badlaav turant sabko dikhta hai' }),
+        state.cloud && state.cloud.updatedAt
+          ? ' · last update ' + fmtStamp(state.cloud.updatedAt) +
+            (state.cloud.updatedBy ? ' · ' + state.cloud.updatedBy : '')
+          : ''
+      ));
+      bar.hidden = false;
+      return;
+    }
+
+    /* ---- Firebase configured but not working: say why ---- */
+    if (window.ECAL_FIREBASE && window.ECAL_FIREBASE.enabled !== false &&
+        state.syncReason && state.syncReason !== 'not-configured') {
+      bar.classList.add('syncbar--warn');
+      bar.appendChild(el('span', { class: 'syncbar__txt' },
+        el('b', { text: '⚠️ Live sync chalu nahi hua — ' }),
+        (AUTH_MESSAGES[state.syncReason] || ('wajah: ' + state.syncReason)) +
+        ' Filhaal purana tareeka (Publish) chal raha hai.'
+      ));
+      bar.hidden = false;
+      return;
+    }
 
     // could not reach the shared file at all
     if (state.offline) {
@@ -1821,6 +2091,7 @@
     });
 
     saveEvents();
+    afterChange();
     toast(restored
       ? restored + ' default event' + (restored === 1 ? '' : 's') + ' wapas aa gaye ✓'
       : 'Sab default events already maujood hain.', 'ok');
@@ -2130,7 +2401,9 @@
       download('calendar.json', buildPublishJSON(rememberPubName()), 'application/json');
       toast('calendar.json download ho gayi ✓', 'ok');
     });
-    $('pubDockBtn').addEventListener('click', openPublishModal);
+    $('pubDockBtn').addEventListener('click', function () {
+      if (state.mode === 'live') pushToCloud(); else openPublishModal();
+    });
     $('pubVerifyBtn').addEventListener('click', verifyPublished);
     $('pubDiscardBtn').addEventListener('click', discardDraft);
 
@@ -2213,17 +2486,51 @@
 
   let sharedReady = Promise.resolve();
 
+  /* window.ECAL_SYNC is set by sync-firebase.js, which is an ES module and so
+     always runs after this classic script. Wait for it, but never forever. */
+  function waitForSync() {
+    if (!window.ECAL_FIREBASE || window.ECAL_FIREBASE.enabled === false) {
+      return Promise.resolve({ ok: false, reason: 'not-configured' });
+    }
+    if (window.ECAL_SYNC) return window.ECAL_SYNC.ready;
+
+    return new Promise(function (resolve) {
+      let settled = false;
+      window.addEventListener('ecal-sync-ready', function () {
+        settled = true;
+        resolve(window.ECAL_SYNC ? window.ECAL_SYNC.ready : { ok: false, reason: 'missing' });
+      }, { once: true });
+
+      setTimeout(function () {
+        if (!settled) resolve({ ok: false, reason: 'sdk-load-failed' });
+      }, 10000);
+    });
+  }
+
   function boot() {
     loadLocal();
     applyPrefs();
     wire();
 
-    // start pulling the shared calendar straight away, while the user is still
-    // typing the password
-    sharedReady = fetchPublished().then(function (pub) {
+    /* Two things are started at once while the user types their password:
+         - the published GitHub file, which is the fallback and the first-run seed
+         - Firebase, which takes over completely when it is available */
+    const filePromise = fetchPublished().then(function (pub) {
       state.published = pub;
-      state.offline = !pub;
       return pub;
+    });
+
+    const syncPromise = waitForSync().then(function (res) {
+      state.mode = res && res.ok ? 'live' : 'file';
+      state.syncReason = res ? res.reason : 'missing';
+      if (state.mode === 'live') listenToCloud();
+      return res;
+    });
+
+    sharedReady = Promise.all([filePromise, syncPromise]).then(function () {
+      // in file mode the old rules apply; in live mode the cloud decides
+      if (state.mode === 'file') state.offline = !state.published;
+      return state.published;
     });
 
     let saved = null;
